@@ -1,0 +1,18 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "next build",
+  "devCommand": "next dev",
+  "installCommand": "bun install",
+  "outputDirectory": ".next",
+  "env": {
+    "VERCEL_TOOLBAR": "0",
+    "VERCEL_AUTOMATION_BYPASS_SECRET": "",
+    "NEXT_PUBLIC_VERCEL_ENV": "production"
+  },
+  "crons": [
+    {
+      "path": "/api/cron/inspection-reminder",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}
