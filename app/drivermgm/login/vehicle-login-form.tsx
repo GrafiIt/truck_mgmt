@@ -3,14 +3,12 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { vehicleLogin } from "@/lib/vehicle-auth"
 
 export default function VehicleLoginForm() {
-  const router = useRouter()
   const [companyCode, setCompanyCode] = useState("")
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
@@ -26,8 +24,10 @@ export default function VehicleLoginForm() {
       const result = await vehicleLogin(companyCode, username, password)
 
       if (result.success) {
-        router.push("/drivermgm/vehicles")
-        router.refresh()
+        // Server Action에서 설정한 쿠키가 브라우저에 완전히 반영되도록
+        // full page navigation 사용 (router.push는 soft navigation이라 쿠키가 누락됨)
+        window.location.href = "/drivermgm/vehicles"
+        return
       } else {
         setError(result.error || "로그인에 실패했습니다.")
         setIsLoading(false)
