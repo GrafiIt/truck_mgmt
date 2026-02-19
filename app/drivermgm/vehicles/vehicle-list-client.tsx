@@ -6,7 +6,7 @@ import { getNotificationThresholds } from "./notification-settings/actions"
 import VehicleList from "./vehicle-list"
 import type { NotificationThreshold } from "@/lib/notification-thresholds"
 
-export default function VehicleListClient() {
+export default function VehicleListClient({ companyCodeFromUrl }: { companyCodeFromUrl?: string }) {
   const [vehicles, setVehicles] = useState([])
   const [thresholds, setThresholds] = useState<NotificationThreshold[]>([])
   const [loading, setLoading] = useState(true)
@@ -17,9 +17,24 @@ export default function VehicleListClient() {
       try {
         setLoading(true)
         setError(null)
+        
+        // 1) URL 쿼리에서 company_code 확인
+        // 2) 브라우저 쿠키에서 company_code 확인
+        let companyCode = companyCodeFromUrl
+        if (!companyCode) {
+          const cookieStr = document.cookie
+          const match = cookieStr.match(/company_code=([^;]+)/)
+          if (match) companyCode = decodeURIComponent(match[1])
+        }
+        
+        if (!companyCode) {
+          window.location.href = "/drivermgm/login"
+          return
+        }
+        
         const [vehicleData, thresholdData] = await Promise.all([
-          getVehicles(),
-          getNotificationThresholds(),
+          getVehicles(companyCode),
+          getNotificationThresholds(companyCode),
         ])
         setVehicles(vehicleData)
         setThresholds(thresholdData as NotificationThreshold[])

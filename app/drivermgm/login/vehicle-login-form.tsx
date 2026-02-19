@@ -3,14 +3,12 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { vehicleLogin } from "@/lib/vehicle-auth"
 
 export default function VehicleLoginForm() {
-  const router = useRouter()
   const [companyCode, setCompanyCode] = useState("")
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
@@ -26,14 +24,21 @@ export default function VehicleLoginForm() {
       const result = await vehicleLogin(companyCode, username, password)
 
       if (result.success) {
-        router.push("/drivermgm/vehicles")
-        router.refresh()
+        // 쿠키와 별도로 company_code를 URL 쿼리로 전달
+        const cc = result.companyCode || companyCode
+        const cn = result.companyName || ""
+        // 브라우저 쿠키도 직접 설정 (Server Action 쿠키가 전달되지 않을 수 있으므로)
+        document.cookie = `company_code=${encodeURIComponent(cc)}; path=/; max-age=${60*60*24*7}; samesite=lax`
+        document.cookie = `company_name=${encodeURIComponent(cn)}; path=/; max-age=${60*60*24*7}; samesite=lax`
+        document.cookie = `vehicle_admin=true; path=/; max-age=${60*60*24*7}; samesite=lax`
+        window.location.href = `/drivermgm/vehicles?cc=${encodeURIComponent(cc)}`
+        return
       } else {
         setError(result.error || "로그인에 실패했습니다.")
+        setIsLoading(false)
       }
     } catch (err) {
       setError("로그인 중 오류가 발생했습니다.")
-    } finally {
       setIsLoading(false)
     }
   }

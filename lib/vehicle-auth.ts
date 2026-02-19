@@ -19,42 +19,46 @@ export async function vehicleLogin(companyCode: string, username: string, passwo
 
   // 2. 해당 기업의 사용자 테이블에서 로그인 확인
   const tableName = `vehicle_users_${companyCode}`
+  
   const { data: users, error } = await supabase
     .from(tableName)
     .select("id, username")
     .eq("username", username)
     .eq("password", password)
 
-  if (error) {
+  if (error || !users || users.length === 0) {
     return { success: false, error: "아이디 또는 비밀번호가 올바르지 않습니다." }
   }
 
-  if (!users || users.length === 0) {
-    return { success: false, error: "아이디 또는 비밀번호가 올바르지 않습니다." }
+  // 3. 세션에 기업코드와 인증 정보 저장 (쿠키)
+  try {
+    const cookieStore = await cookies()
+    cookieStore.set("vehicle_admin", "true", {
+      httpOnly: false,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    })
+    cookieStore.set("company_code", companyCode, {
+      httpOnly: false,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    })
+    cookieStore.set("company_name", company.company_name, {
+      httpOnly: false,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    })
+  } catch (e) {
+    // 쿠키 설정 실패해도 companyCode를 반환하여 클라이언트에서 처리
   }
 
-  // 3. 세션에 기업코드와 인증 정보 저장
-  const cookieStore = await cookies()
-  cookieStore.set("vehicle_admin", "true", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  })
-  cookieStore.set("company_code", companyCode, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  })
-  cookieStore.set("company_name", company.company_name, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  })
-
-  return { success: true }
+  return { success: true, companyCode, companyName: company.company_name }
 }
 
 export async function vehicleLogout() {

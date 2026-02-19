@@ -9,9 +9,12 @@ export default function VehicleHeader() {
   const router = useRouter()
 
   const handleLogout = async () => {
-    await vehicleLogout()
-    router.push("/drivermgm/login")
-    router.refresh()
+    // 브라우저 쿠키 삭제
+    document.cookie = "vehicle_admin=; path=/; max-age=0"
+    document.cookie = "company_code=; path=/; max-age=0"
+    document.cookie = "company_name=; path=/; max-age=0"
+    try { await vehicleLogout() } catch {}
+    window.location.href = "/drivermgm/login"
   }
 
   const handleSettings = () => {

@@ -6,27 +6,29 @@ import { verifyAdminCredentials as verifyAdmin } from "@/lib/vehicle-auth"
 
 export const verifyAdminCredentials = verifyAdmin
 
-export async function getVehicles() {
+export async function getVehicles(companyCodeParam?: string) {
   const MAX_RETRIES = 5
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      console.log(`[v0] getVehicles: Attempt ${attempt}/${MAX_RETRIES}`)
-
       const supabase = await createAdminClient()
 
       if (!supabase || typeof supabase.from !== "function") {
-        console.error("[v0] getVehicles: Invalid Supabase client returned")
         if (attempt < MAX_RETRIES) {
           const delay = 500 * Math.pow(2, attempt - 1)
-          console.log(`[v0] getVehicles: Retrying in ${delay}ms...`)
           await new Promise((resolve) => setTimeout(resolve, delay))
           continue
         }
         return []
       }
 
-      const tableName = await getTableName("vehicles")
+      // 파라미터로 전달된 companyCode 사용, 없으면 쿠키에서 가져오기
+      let tableName: string
+      if (companyCodeParam) {
+        tableName = `vehicles_${companyCodeParam}`
+      } else {
+        tableName = await getTableName("vehicles")
+      }
       
       const { data, error } = await supabase.from(tableName).select("*").order("vehicle_number", { ascending: true })
 
