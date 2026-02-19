@@ -24,8 +24,14 @@ export default function VehicleLoginForm() {
       const result = await vehicleLogin(companyCode, username, password)
 
       if (result.success) {
-        // Server Action에서 쿠키가 설정됨 - full page navigation으로 이동
-        window.location.href = "/drivermgm/vehicles"
+        // 쿠키와 별도로 company_code를 URL 쿼리로 전달
+        const cc = result.companyCode || companyCode
+        const cn = result.companyName || ""
+        // 브라우저 쿠키도 직접 설정 (Server Action 쿠키가 전달되지 않을 수 있으므로)
+        document.cookie = `company_code=${encodeURIComponent(cc)}; path=/; max-age=${60*60*24*7}; samesite=lax`
+        document.cookie = `company_name=${encodeURIComponent(cn)}; path=/; max-age=${60*60*24*7}; samesite=lax`
+        document.cookie = `vehicle_admin=true; path=/; max-age=${60*60*24*7}; samesite=lax`
+        window.location.href = `/drivermgm/vehicles?cc=${encodeURIComponent(cc)}`
         return
       } else {
         setError(result.error || "로그인에 실패했습니다.")

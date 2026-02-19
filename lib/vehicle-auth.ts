@@ -31,30 +31,34 @@ export async function vehicleLogin(companyCode: string, username: string, passwo
   }
 
   // 3. 세션에 기업코드와 인증 정보 저장 (쿠키)
-  const cookieStore = await cookies()
-  cookieStore.set("vehicle_admin", "true", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7,
-    path: "/",
-  })
-  cookieStore.set("company_code", companyCode, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7,
-    path: "/",
-  })
-  cookieStore.set("company_name", company.company_name, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7,
-    path: "/",
-  })
+  try {
+    const cookieStore = await cookies()
+    cookieStore.set("vehicle_admin", "true", {
+      httpOnly: false,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    })
+    cookieStore.set("company_code", companyCode, {
+      httpOnly: false,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    })
+    cookieStore.set("company_name", company.company_name, {
+      httpOnly: false,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    })
+  } catch (e) {
+    // 쿠키 설정 실패해도 companyCode를 반환하여 클라이언트에서 처리
+  }
 
-  return { success: true }
+  return { success: true, companyCode, companyName: company.company_name }
 }
 
 export async function vehicleLogout() {
