@@ -132,7 +132,7 @@ importers:
         specifier: 1.4.1
         version: 1.4.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       lucide-react:
-        specifier: ^0.454.0
+        specifier: 0.454.0
         version: 0.454.0(react@19.0.0)
       next:
         specifier: 15.2.4
