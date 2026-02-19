@@ -4,8 +4,6 @@ import { cookies } from "next/headers"
 import { createAdminClient } from "@/lib/supabase/server"
 
 export async function vehicleLogin(companyCode: string, username: string, password: string) {
-  console.log("[v0] Login attempt - Company:", companyCode, "Username:", username)
-  
   const supabase = await createAdminClient()
 
   // 1. 기업코드 확인
@@ -15,25 +13,12 @@ export async function vehicleLogin(companyCode: string, username: string, passwo
     .eq("company_code", companyCode)
     .single()
 
-  console.log("[v0] Company lookup result:", { company, companyError })
-
   if (companyError || !company) {
-    console.log("[v0] Company not found")
     return { success: false, error: "존재하지 않는 기업코드입니다." }
   }
 
   // 2. 해당 기업의 사용자 테이블에서 로그인 확인
   const tableName = `vehicle_users_${companyCode}`
-  console.log("[v0] Checking table:", tableName)
-  console.log("[v0] Looking for username:", username, "with password:", password)
-  
-  // 먼저 해당 username이 존재하는지 확인
-  const { data: allUsers, error: checkError } = await supabase
-    .from(tableName)
-    .select("id, username, password")
-    .eq("username", username)
-  
-  console.log("[v0] User exists check:", { allUsers, checkError })
   
   const { data: users, error } = await supabase
     .from(tableName)
@@ -41,19 +26,9 @@ export async function vehicleLogin(companyCode: string, username: string, passwo
     .eq("username", username)
     .eq("password", password)
 
-  console.log("[v0] User lookup result:", { users, error })
-
-  if (error) {
-    console.log("[v0] Login error:", error)
+  if (error || !users || users.length === 0) {
     return { success: false, error: "아이디 또는 비밀번호가 올바르지 않습니다." }
   }
-
-  if (!users || users.length === 0) {
-    console.log("[v0] No users found")
-    return { success: false, error: "아이디 또는 비밀번호가 올바르지 않습니다." }
-  }
-  
-  console.log("[v0] Login successful for user:", username)
 
   // 3. 세션에 기업코드와 인증 정보 저장
   const cookieStore = await cookies()
@@ -61,22 +36,20 @@ export async function vehicleLogin(companyCode: string, username: string, passwo
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: 60 * 60 * 24 * 7,
   })
   cookieStore.set("company_code", companyCode, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: 60 * 60 * 24 * 7,
   })
   cookieStore.set("company_name", company.company_name, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: 60 * 60 * 24 * 7,
   })
-
-  console.log("[v0] Cookies set successfully for company:", companyCode)
 
   return { success: true }
 }
