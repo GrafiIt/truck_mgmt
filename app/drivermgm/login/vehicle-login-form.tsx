@@ -24,8 +24,7 @@ export default function VehicleLoginForm() {
       const result = await vehicleLogin(companyCode, username, password)
 
       if (result.success) {
-        // Server Action에서 설정한 쿠키가 브라우저에 완전히 반영되도록
-        // full page navigation 사용 (router.push는 soft navigation이라 쿠키가 누락됨)
+        // Server Action에서 쿠키가 설정됨 - full page navigation으로 이동
         window.location.href = "/drivermgm/vehicles"
         return
       } else {

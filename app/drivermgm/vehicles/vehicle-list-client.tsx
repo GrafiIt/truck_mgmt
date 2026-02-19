@@ -17,9 +17,18 @@ export default function VehicleListClient() {
       try {
         setLoading(true)
         setError(null)
+        
+        // 브라우저 쿠키에서 company_code 읽기
+        const cookies = document.cookie.split(";").reduce((acc, c) => {
+          const [key, val] = c.trim().split("=")
+          if (key) acc[key] = decodeURIComponent(val || "")
+          return acc
+        }, {} as Record<string, string>)
+        const companyCode = cookies["company_code"] || undefined
+        
         const [vehicleData, thresholdData] = await Promise.all([
-          getVehicles(),
-          getNotificationThresholds(),
+          getVehicles(companyCode),
+          getNotificationThresholds(companyCode),
         ])
         setVehicles(vehicleData)
         setThresholds(thresholdData as NotificationThreshold[])

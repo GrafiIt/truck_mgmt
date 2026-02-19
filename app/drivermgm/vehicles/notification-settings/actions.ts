@@ -24,7 +24,7 @@ export async function getVehicleTypes() {
   }
 }
 
-export async function getNotificationThresholds() {
+export async function getNotificationThresholds(companyCode?: string) {
   try {
     const supabase = await createClient()
 

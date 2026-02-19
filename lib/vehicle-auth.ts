@@ -30,25 +30,28 @@ export async function vehicleLogin(companyCode: string, username: string, passwo
     return { success: false, error: "아이디 또는 비밀번호가 올바르지 않습니다." }
   }
 
-  // 3. 세션에 기업코드와 인증 정보 저장
+  // 3. 세션에 기업코드와 인증 정보 저장 (쿠키)
   const cookieStore = await cookies()
   cookieStore.set("vehicle_admin", "true", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: 60 * 60 * 24 * 7,
+    path: "/",
   })
   cookieStore.set("company_code", companyCode, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: 60 * 60 * 24 * 7,
+    path: "/",
   })
   cookieStore.set("company_name", company.company_name, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: 60 * 60 * 24 * 7,
+    path: "/",
   })
 
   return { success: true }
