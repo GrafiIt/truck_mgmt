@@ -25,6 +25,15 @@ export async function vehicleLogin(companyCode: string, username: string, passwo
   // 2. 해당 기업의 사용자 테이블에서 로그인 확인
   const tableName = `vehicle_users_${companyCode}`
   console.log("[v0] Checking table:", tableName)
+  console.log("[v0] Looking for username:", username, "with password:", password)
+  
+  // 먼저 해당 username이 존재하는지 확인
+  const { data: allUsers, error: checkError } = await supabase
+    .from(tableName)
+    .select("id, username, password")
+    .eq("username", username)
+  
+  console.log("[v0] User exists check:", { allUsers, checkError })
   
   const { data: users, error } = await supabase
     .from(tableName)
