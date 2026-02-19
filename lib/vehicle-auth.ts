@@ -70,11 +70,7 @@ export async function checkVehicleAuth() {
 
 export async function getCompanyCode(): Promise<string | null> {
   const cookieStore = await cookies()
-  const allCookies = cookieStore.getAll()
-  console.log("[v0] getCompanyCode - All cookies:", allCookies.map(c => c.name))
-  const companyCode = cookieStore.get("company_code")?.value || null
-  console.log("[v0] getCompanyCode - company_code value:", companyCode)
-  return companyCode
+  return cookieStore.get("company_code")?.value || null
 }
 
 export async function getCompanyName(): Promise<string | null> {

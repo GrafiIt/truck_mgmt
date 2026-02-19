@@ -3,11 +3,14 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { vehicleLogin } from "@/lib/vehicle-auth"
 
 export default function VehicleLoginForm() {
+  const router = useRouter()
   const [companyCode, setCompanyCode] = useState("")
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
@@ -20,18 +23,11 @@ export default function VehicleLoginForm() {
     setIsLoading(true)
 
     try {
-      const res = await fetch("/api/vehicle-auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyCode, username, password }),
-      })
-
-      const result = await res.json()
+      const result = await vehicleLogin(companyCode, username, password)
 
       if (result.success) {
-        // 로그인 성공 - 바로 리다이렉트
-        window.location.href = "/drivermgm/vehicles"
-        return
+        router.push("/drivermgm/vehicles")
+        router.refresh()
       } else {
         setError(result.error || "로그인에 실패했습니다.")
         setIsLoading(false)
