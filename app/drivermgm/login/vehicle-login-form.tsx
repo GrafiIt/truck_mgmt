@@ -20,21 +20,38 @@ export default function VehicleLoginForm() {
     setIsLoading(true)
 
     try {
+      console.log("[v0] Calling login API...")
       const res = await fetch("/api/vehicle-auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companyCode, username, password }),
       })
+      console.log("[v0] Login API response status:", res.status)
 
       const result = await res.json()
+      console.log("[v0] Login API result:", result)
 
       if (result.success) {
-        window.location.href = "/drivermgm/vehicles"
+        console.log("[v0] Login success! Checking auth before redirect...")
+        // 쿠키가 설정되었는지 확인
+        const checkRes = await fetch("/api/vehicle-auth/check")
+        const checkData = await checkRes.json()
+        console.log("[v0] Auth check result:", checkData)
+        
+        if (checkData.authenticated) {
+          console.log("[v0] Auth confirmed! Redirecting to vehicles...")
+          window.location.href = "/drivermgm/vehicles"
+        } else {
+          console.log("[v0] Auth check failed after login success!")
+          setError("인증 확인에 실패했습니다. 다시 시도해주세요.")
+          setIsLoading(false)
+        }
       } else {
         setError(result.error || "로그인에 실패했습니다.")
         setIsLoading(false)
       }
     } catch (err) {
+      console.error("[v0] Login fetch error:", err)
       setError("로그인 중 오류가 발생했습니다.")
       setIsLoading(false)
     }

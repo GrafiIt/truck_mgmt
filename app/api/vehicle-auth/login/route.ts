@@ -1,10 +1,10 @@
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 
 export async function POST(request: Request) {
   try {
     const { companyCode, username, password } = await request.json()
+    console.log("[v0] API Login attempt:", companyCode, username)
 
     const supabase = await createAdminClient()
 
@@ -14,6 +14,8 @@ export async function POST(request: Request) {
       .select("company_code, company_name")
       .eq("company_code", companyCode)
       .single()
+
+    console.log("[v0] API Company result:", { company, companyError })
 
     if (companyError || !company) {
       return NextResponse.json(
@@ -30,6 +32,8 @@ export async function POST(request: Request) {
       .eq("username", username)
       .eq("password", password)
 
+    console.log("[v0] API User result:", { users, error })
+
     if (error || !users || users.length === 0) {
       return NextResponse.json(
         { success: false, error: "아이디 또는 비밀번호가 올바르지 않습니다." },
@@ -37,30 +41,26 @@ export async function POST(request: Request) {
       )
     }
 
-    // 3. 쿠키 설정
-    const cookieStore = await cookies()
-    cookieStore.set("vehicle_admin", "true", {
+    // 3. NextResponse에 쿠키를 직접 설정
+    const response = NextResponse.json({ success: true })
+    
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "lax" as const,
       maxAge: 60 * 60 * 24 * 7,
-    })
-    cookieStore.set("company_code", companyCode, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-    })
-    cookieStore.set("company_name", company.company_name, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-    })
+      path: "/",
+    }
 
-    return NextResponse.json({ success: true })
+    response.cookies.set("vehicle_admin", "true", cookieOptions)
+    response.cookies.set("company_code", companyCode, cookieOptions)
+    response.cookies.set("company_name", company.company_name, cookieOptions)
+
+    console.log("[v0] API Login success, cookies set on response")
+
+    return response
   } catch (err) {
-    console.error("Login error:", err)
+    console.error("[v0] API Login error:", err)
     return NextResponse.json(
       { success: false, error: "로그인 중 오류가 발생했습니다." },
       { status: 500 }
