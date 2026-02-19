@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   description: "Vehicle and Driver Management System",
   generator: "v0.app",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/favicon.png",
   },
 }
 
