@@ -4,6 +4,8 @@ import { cookies } from "next/headers"
 import { createAdminClient } from "@/lib/supabase/server"
 
 export async function vehicleLogin(companyCode: string, username: string, password: string) {
+  console.log("[v0] Login attempt - Company:", companyCode, "Username:", username)
+  
   const supabase = await createAdminClient()
 
   // 1. 기업코드 확인
@@ -13,25 +15,36 @@ export async function vehicleLogin(companyCode: string, username: string, passwo
     .eq("company_code", companyCode)
     .single()
 
+  console.log("[v0] Company lookup result:", { company, companyError })
+
   if (companyError || !company) {
+    console.log("[v0] Company not found")
     return { success: false, error: "존재하지 않는 기업코드입니다." }
   }
 
   // 2. 해당 기업의 사용자 테이블에서 로그인 확인
   const tableName = `vehicle_users_${companyCode}`
+  console.log("[v0] Checking table:", tableName)
+  
   const { data: users, error } = await supabase
     .from(tableName)
     .select("id, username")
     .eq("username", username)
     .eq("password", password)
 
+  console.log("[v0] User lookup result:", { users, error })
+
   if (error) {
+    console.log("[v0] Login error:", error)
     return { success: false, error: "아이디 또는 비밀번호가 올바르지 않습니다." }
   }
 
   if (!users || users.length === 0) {
+    console.log("[v0] No users found")
     return { success: false, error: "아이디 또는 비밀번호가 올바르지 않습니다." }
   }
+  
+  console.log("[v0] Login successful for user:", username)
 
   // 3. 세션에 기업코드와 인증 정보 저장
   const cookieStore = await cookies()
