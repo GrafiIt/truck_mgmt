@@ -76,6 +76,8 @@ export async function vehicleLogin(companyCode: string, username: string, passwo
     maxAge: 60 * 60 * 24 * 7, // 7 days
   })
 
+  console.log("[v0] Cookies set successfully for company:", companyCode)
+
   return { success: true }
 }
 
