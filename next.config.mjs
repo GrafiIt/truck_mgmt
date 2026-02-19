@@ -9,9 +9,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  experimental: {
-    webVitalsAttribution: ['CLS', 'LCP'],
-  },
   env: {
     VERCEL_TOOLBAR: '0',
   },
