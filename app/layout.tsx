@@ -1,7 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
 const inter = Inter({
@@ -41,7 +40,7 @@ export default function RootLayout({
             copyright 그라피아이티(grafi-it@outlook.kr)
           </p>
         </footer>
-        <Analytics />
+
       </body>
     </html>
   )
