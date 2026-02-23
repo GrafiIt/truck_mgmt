@@ -64,6 +64,8 @@ export async function POST(request: NextRequest) {
     console.log("[v0] Refueling record saved successfully to", tableName)
 
     // 연비 계산 및 차량 정보 업데이트
+    let calculationDebug = { skipped: false, reason: "", previousMileage: 0, currentMileage: 0, distance: 0, fuelAmountValue: 0, efficiency: 0 }
+    
     if (mileage && fuelAmount) {
       const vehiclesTableName = await getTableNameFromRequest(request, "vehicles")
       
@@ -82,13 +84,9 @@ export async function POST(request: NextRequest) {
       const distance = currentMileage - previousMileage
       const efficiency = distance > 0 && fuelAmountValue > 0 ? distance / fuelAmountValue : 0
       
-      console.log("[v0] Fuel efficiency calculation:", {
-        previousMileage,
-        currentMileage,
-        distance,
-        fuelAmountValue,
-        efficiency
-      })
+      calculationDebug = { skipped: false, reason: "", previousMileage, currentMileage, distance, fuelAmountValue, efficiency }
+      
+      console.log("[v0] Fuel efficiency calculation:", calculationDebug)
       
       // 차량 정보 업데이트
       const { error: updateError } = await supabase
@@ -109,6 +107,15 @@ export async function POST(request: NextRequest) {
         console.log("[v0] SUCCESS: Total mileage updated to", currentMileage, "km")
       }
     } else {
+      calculationDebug = { 
+        skipped: true, 
+        reason: `Missing: mileage=${mileage}, fuelAmount=${fuelAmount}`,
+        previousMileage: 0,
+        currentMileage: 0,
+        distance: 0,
+        fuelAmountValue: 0,
+        efficiency: 0
+      }
       console.log("[v0] WARNING: Skipping fuel efficiency calculation - missing mileage or fuelAmount")
     }
 
@@ -153,6 +160,7 @@ export async function POST(request: NextRequest) {
       debug: {
         fuelEfficiency: updatedVehicle?.fuel_efficiency,
         totalMileage: updatedVehicle?.total_mileage,
+        calculation: calculationDebug,
         message: "연비 계산 완료"
       }
     })

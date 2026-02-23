@@ -279,7 +279,25 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
       if (result.success) {
         // 주유 기록인 경우 디버그 정보 표시
         if (selectedField === "refueling" && result.debug) {
-          alert(`주유 기록 저장 완료!\n\n연비: ${result.debug.fuelEfficiency ? result.debug.fuelEfficiency.toFixed(2) + ' km/L' : '계산 안됨'}\n총주행거리: ${result.debug.totalMileage?.toLocaleString() || '0'} km`)
+          const calc = result.debug.calculation
+          let debugMessage = `주유 기록 저장 완료!\n\n`
+          debugMessage += `연비: ${result.debug.fuelEfficiency ? result.debug.fuelEfficiency.toFixed(2) + ' km/L' : '계산 안됨'}\n`
+          debugMessage += `총주행거리: ${result.debug.totalMileage?.toLocaleString() || '0'} km\n\n`
+          
+          if (calc) {
+            if (calc.skipped) {
+              debugMessage += `❌ 계산 건너뜀: ${calc.reason}`
+            } else {
+              debugMessage += `계산 내역:\n`
+              debugMessage += `- 이전 주행거리: ${calc.previousMileage.toLocaleString()} km\n`
+              debugMessage += `- 현재 주행거리: ${calc.currentMileage.toLocaleString()} km\n`
+              debugMessage += `- 주행한 거리: ${calc.distance.toLocaleString()} km\n`
+              debugMessage += `- 주유량: ${calc.fuelAmountValue} L\n`
+              debugMessage += `- 계산된 연비: ${calc.efficiency.toFixed(2)} km/L`
+            }
+          }
+          
+          alert(debugMessage)
         }
         
         setIsAdding(false)
@@ -369,7 +387,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
             record.month_end_mileage ? record.month_end_mileage.toString() : "",
           ]
         } else {
-          // 기타 정비항목: 수리업체, 금액, 정비 기타 사항
+          // 기��� 정비항목: 수리업체, 금액, 정비 기타 사항
           searchTargets = [
             record.repair_shop || "",
             record.cost ? record.cost.toString() : "",
