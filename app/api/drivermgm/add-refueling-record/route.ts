@@ -52,6 +52,52 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 연비 계산 및 차량 정보 업데이트
+    if (mileage && fuelAmount) {
+      const vehiclesTableName = await getTableNameFromRequest(request, "vehicles")
+      
+      console.log("[v0] Calculating fuel efficiency...")
+      
+      // 이전 주행거리 조회
+      const { data: vehicle } = await supabase
+        .from(vehiclesTableName)
+        .select("total_mileage")
+        .eq("id", parseInt(vehicleId))
+        .single()
+      
+      const previousMileage = vehicle?.total_mileage ?? 0
+      const currentMileage = parseInt(mileage)
+      const fuelAmountValue = parseFloat(fuelAmount)
+      const distance = currentMileage - previousMileage
+      const efficiency = distance > 0 && fuelAmountValue > 0 ? distance / fuelAmountValue : 0
+      
+      console.log("[v0] Fuel efficiency calculation:", {
+        previousMileage,
+        currentMileage,
+        distance,
+        fuelAmountValue,
+        efficiency
+      })
+      
+      // 차량 정보 업데이트
+      const { error: updateError } = await supabase
+        .from(vehiclesTableName)
+        .update({
+          total_mileage: currentMileage,
+          last_refuel_date: refuelDate,
+          last_refuel_mileage: currentMileage,
+          fuel_efficiency: efficiency,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", parseInt(vehicleId))
+      
+      if (updateError) {
+        console.error("[v0] Error updating vehicle fuel efficiency:", updateError)
+      } else {
+        console.log("[v0] Vehicle fuel efficiency updated successfully")
+      }
+    }
+
     // 주유 기록의 주행거리를 vehicles 테이블의 total_mileage에 반영
     // NOTE: 현재 direct update에 문제가 있어 주석 처리함.
     // 이후 database trigger로 자동화할 예정
