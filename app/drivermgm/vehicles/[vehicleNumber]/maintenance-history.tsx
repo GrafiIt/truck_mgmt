@@ -144,6 +144,9 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    
+    console.log("[v0] === FORM SUBMIT TRIGGERED ===")
+    console.log("[v0] Selected field:", selectedField)
 
     const formData = new FormData(e.currentTarget)
     
@@ -211,10 +214,14 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
       formData.set("monthly_distance", monthlyDistance.toString())
 
     } else if (selectedField === "refueling") {
+      console.log("[v0] Processing refueling record...")
+      console.log("[v0] FormData entries:", Array.from(formData.entries()))
+      
       // 주유 항목만 기존 총주행거리 검증
       const refuelMileage = formData.get("mileage")
       if (refuelMileage) {
         const inputMileage = Number(refuelMileage)
+        console.log("[v0] Validating mileage:", { inputMileage, currentTotalMileage })
         if (inputMileage < currentTotalMileage) {
           alert(`입력한 주행거리(${inputMileage.toLocaleString()} km)가 총주행거리(${currentTotalMileage.toLocaleString()} km)보다 작습니다.\n\n주행거리는 항상 증가해야 합니다. 현재 총주행거리 이상의 값을 입력해주세요.`)
           return
@@ -225,6 +232,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
       if (refuelDate) {
         formData.append("maintenance_date", refuelDate)
       }
+      console.log("[v0] Refueling formData ready:", Array.from(formData.entries()))
     }
     // 나머지 정비항목은 주행거리 검증 없이 진행
 
@@ -248,10 +256,12 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
           body: formData,
         }).then((response) => response.json())
       } else if (selectedField === "refueling") {
+        console.log("[v0] Calling /api/drivermgm/add-refueling-record...")
         result = await fetch("/api/drivermgm/add-refueling-record", {
           method: "POST",
           body: formData,
         }).then((response) => response.json())
+        console.log("[v0] Refueling API response:", result)
       } else if (selectedField === "inspection") {
         result = await fetch("/api/drivermgm/add-inspection-record", {
           method: "POST",
@@ -267,6 +277,31 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
       console.log("[v0] Maintenance record result:", result)
 
       if (result.success) {
+        // 주유 기록인 경우 디버그 정보 표시
+        if (selectedField === "refueling" && result.debug) {
+          const calc = result.debug.calculation
+          let debugMessage = `주유 기록 저장 완료!\n\n`
+          debugMessage += `연비: ${result.debug.fuelEfficiency ? result.debug.fuelEfficiency.toFixed(2) + ' km/L' : '계산 안됨'}\n`
+          debugMessage += `총주행거리: ${result.debug.totalMileage?.toLocaleString() || '0'} km\n`
+          debugMessage += `마지막 주유량: ${result.debug.lastRefuelAmount?.toFixed(2) || '0'} L\n\n`
+          
+          if (calc) {
+            if (calc.skipped) {
+              debugMessage += `❌ 계산 건너뜀: ${calc.reason}`
+            } else {
+              debugMessage += `계산 내역:\n`
+              debugMessage += `- 이전 주행거리: ${calc.previousMileage.toLocaleString()} km\n`
+              debugMessage += `- 현재 주행거리: ${calc.currentMileage.toLocaleString()} km\n`
+              debugMessage += `- 주행한 거리: ${calc.distance.toLocaleString()} km\n`
+              debugMessage += `- 이전 주유량 (사용한 연료): ${calc.previousFuelAmount} L\n`
+              debugMessage += `- 현재 주유량 (방금 주입): ${calc.currentFuelAmount} L\n`
+              debugMessage += `- 계산된 연비: ${calc.efficiency.toFixed(2)} km/L`
+            }
+          }
+          
+          alert(debugMessage)
+        }
+        
         setIsAdding(false)
         setSelectedField("")
         setSearchQuery("")
@@ -354,7 +389,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
             record.month_end_mileage ? record.month_end_mileage.toString() : "",
           ]
         } else {
-          // 기타 정비항목: 수리업체, 금액, 정비 기타 사항
+          // 기��� 정비항목: 수리업체, 금액, 정비 기타 사항
           searchTargets = [
             record.repair_shop || "",
             record.cost ? record.cost.toString() : "",
@@ -1334,7 +1369,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                         id="edit-notes"
                         value={editValues.text_value2 || ""}
                         onChange={(e) => setEditValues({ ...editValues, text_value2: e.target.value })}
-                        placeholder="정비 기타 사항을 입력하세요"
+                        placeholder="정��� 기타 사항을 입력하세요"
                         rows={3}
                       />
                     </div>
@@ -1663,7 +1698,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="edit-month-start">월의 첫 주행거리 (km)</Label>
+                        <Label htmlFor="edit-month-start">월의 첫 주행���리 (km)</Label>
                         <Input
                           id="edit-month-start"
                           type="text"
@@ -1673,7 +1708,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                             const raw = parseNumberFromFormatted(e.target.value)
                             setEditValues({ ...editValues, month_start_mileage: raw })
                           }}
-                          placeholder="월의 첫 주행거리"
+                          placeholder="월의 �� 주행거리"
                         />
                       </div>
                       <div className="space-y-2">

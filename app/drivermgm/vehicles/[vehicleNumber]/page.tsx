@@ -37,11 +37,15 @@ export default async function VehicleDetailPage({
     getNotificationThresholds(),
   ])
 
+  // 가장 최근 주유 기록에서 주유량을 가져오기
+  const lastRefueling = maintenanceRecords.find(record => record.field_name === "refueling")
+  const lastRefuelAmount = lastRefueling?.text_value ? parseFloat(lastRefueling.text_value) : 0
+
   return (
     <div className="min-h-screen bg-muted">
       <VehicleHeader />
       <main className="container mx-auto px-4 py-6 space-y-6">
-        <VehicleDetailForm vehicle={vehicle} thresholds={thresholds} />
+        <VehicleDetailForm vehicle={vehicle} thresholds={thresholds} lastRefuelAmount={lastRefuelAmount} />
         <MaintenanceHistory
           vehicleId={vehicle.id}
           vehicleNumber={vehicle.vehicle_number}

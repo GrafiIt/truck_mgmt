@@ -27,7 +27,7 @@ import {
   getHighlightClass,
 } from "@/lib/notification-thresholds"
 
-export default function VehicleDetailForm({ vehicle, thresholds = [] }: { vehicle: any; thresholds?: NotificationThreshold[] }) {
+export default function VehicleDetailForm({ vehicle, thresholds = [], lastRefuelAmount = 0 }: { vehicle: any; thresholds?: NotificationThreshold[]; lastRefuelAmount?: number }) {
   const router = useRouter()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
@@ -238,6 +238,11 @@ export default function VehicleDetailForm({ vehicle, thresholds = [] }: { vehicl
           <div className="col-span-full md:col-span-1">
             <Label>연비</Label>
             <Input value={fuelEfficiency} disabled className="bg-gray-50" />
+          </div>
+
+          <div className="col-span-full md:col-span-1">
+            <Label>마지막 주유량</Label>
+            <Input value={lastRefuelAmount ? `${lastRefuelAmount.toFixed(2)} L` : "-"} disabled className="bg-gray-50" />
           </div>
 
           <div className="col-span-full md:col-span-1">
