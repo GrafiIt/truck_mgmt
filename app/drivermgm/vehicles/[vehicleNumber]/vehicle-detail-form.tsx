@@ -27,7 +27,7 @@ import {
   getHighlightClass,
 } from "@/lib/notification-thresholds"
 
-export default function VehicleDetailForm({ vehicle, thresholds = [] }: { vehicle: any; thresholds?: NotificationThreshold[] }) {
+export default function VehicleDetailForm({ vehicle, thresholds = [], lastRefuelAmount = 0 }: { vehicle: any; thresholds?: NotificationThreshold[]; lastRefuelAmount?: number }) {
   const router = useRouter()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
@@ -100,7 +100,6 @@ export default function VehicleDetailForm({ vehicle, thresholds = [] }: { vehicl
   }
 
   const fuelEfficiency = vehicle.fuel_efficiency ? `${vehicle.fuel_efficiency.toFixed(2)} km/L` : "-"
-  const lastRefuelAmount = vehicle.last_refuel_amount ? `${vehicle.last_refuel_amount.toFixed(2)} L` : "-"
 
   const threshold = getThresholdForVehicleType(vehicle.vehicle_type, thresholds)
   const sh = (name: string, date: string | null, mileage: number | null) =>
@@ -243,7 +242,7 @@ export default function VehicleDetailForm({ vehicle, thresholds = [] }: { vehicl
 
           <div className="col-span-full md:col-span-1">
             <Label>마지막 주유량</Label>
-            <Input value={lastRefuelAmount} disabled className="bg-gray-50" />
+            <Input value={lastRefuelAmount ? `${lastRefuelAmount.toFixed(2)} L` : "-"} disabled className="bg-gray-50" />
           </div>
 
           <div className="col-span-full md:col-span-1">
