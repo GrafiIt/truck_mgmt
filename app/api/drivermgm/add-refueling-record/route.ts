@@ -122,32 +122,6 @@ export async function POST(request: NextRequest) {
       console.log("[v0] WARNING: Skipping fuel efficiency calculation - missing mileage or fuelAmount")
     }
 
-    // 주유 기록의 주행거리를 vehicles 테이블의 total_mileage에 반영
-    // NOTE: 현재 direct update에 문제가 있어 주석 처리함.
-    // 이후 database trigger로 자동화할 예정
-    /*
-    if (mileage) {
-      const vehiclesTableName = await getTableNameFromRequest(request, "vehicles")
-      const mileageValue = parseInt(mileage)
-      
-      console.log("[v0] Updating total_mileage to:", mileageValue)
-      
-      const { error: updateError } = await supabase
-        .from(vehiclesTableName)
-        .update({
-          total_mileage: mileageValue,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", parseInt(vehicleId))
-      
-      if (updateError) {
-        console.error("[v0] Error updating total_mileage:", updateError)
-      } else {
-        console.log("[v0] total_mileage updated successfully")
-      }
-    }
-    */
-
     console.log("[v0] === REFUELING RECORD API COMPLETED SUCCESSFULLY ===")
     
     // 디버깅을 위한 정보 포함
