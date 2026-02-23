@@ -144,6 +144,9 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    
+    console.log("[v0] === FORM SUBMIT TRIGGERED ===")
+    console.log("[v0] Selected field:", selectedField)
 
     const formData = new FormData(e.currentTarget)
     
