@@ -105,23 +105,34 @@ export async function POST(request: NextRequest) {
       console.log("[v0] Fuel efficiency calculation:", calculationDebug)
       
       // 차량 정보 업데이트: 현재 주유량을 last_refuel_amount에 저장
+      // last_refuel_amount 컬럼이 없을 수 있으므로 먼저 기본 필드만 업데이트 시도
+      const updateData: Record<string, any> = {
+        total_mileage: currentMileage,
+        last_refuel_date: refuelDate,
+        last_refuel_mileage: currentMileage,
+        fuel_efficiency: efficiency,
+        updated_at: new Date().toISOString(),
+      }
+      
+      // last_refuel_amount 컬럼이 존재하면 추가
+      try {
+        updateData.last_refuel_amount = currentFuelAmount
+      } catch (e) {
+        console.log("[v0] WARNING: last_refuel_amount column may not exist")
+      }
+      
       const { error: updateError } = await supabase
         .from(vehiclesTableName)
-        .update({
-          total_mileage: currentMileage,
-          last_refuel_date: refuelDate,
-          last_refuel_mileage: currentMileage,
-          last_refuel_amount: currentFuelAmount, // 현재 주유량 저장 (다음 연비 계산에 사용)
-          fuel_efficiency: efficiency,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq("id", parseInt(vehicleId))
       
       if (updateError) {
-        console.error("[v0] ERROR updating vehicle fuel efficiency:", updateError)
+        console.error("[v0] ERROR updating vehicle:", updateError)
+        console.error("[v0] Update data:", updateData)
       } else {
         console.log("[v0] SUCCESS: Vehicle fuel efficiency updated to", efficiency, "km/L")
         console.log("[v0] SUCCESS: Total mileage updated to", currentMileage, "km")
+        console.log("[v0] SUCCESS: Last refuel amount updated to", currentFuelAmount, "L")
       }
     } else {
       calculationDebug = { 
