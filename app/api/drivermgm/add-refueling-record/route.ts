@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     // 동적 테이블 이름 사용
     const tableName = await getTableNameFromRequest(request, "vehicle_field_history")
 
-    // insert 데이터 - fuel_amount와 fuel_cost 컬럼 추가
+    // insert 데이터
     const { error } = await supabase.from(tableName).insert({
       vehicle_id: parseInt(vehicleId),
       maintenance_date: maintenanceDate || refuelDate,
@@ -49,8 +49,6 @@ export async function POST(request: NextRequest) {
       text_value: fuelAmount,
       text_value2: maintenanceNotes || null,
       cost: parseInt(fuelCost) || 0,
-      fuel_amount: parseFloat(fuelAmount) || null,
-      fuel_cost: parseInt(fuelCost) || 0,
       repair_shop: repairShop || null,
     })
 
