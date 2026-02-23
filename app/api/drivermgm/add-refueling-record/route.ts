@@ -151,7 +151,6 @@ export async function POST(request: NextRequest) {
     console.log("[v0] === REFUELING RECORD API COMPLETED SUCCESSFULLY ===")
     
     // 디버깅을 위한 정보 포함
-    const vehiclesTableName = await getTableNameFromRequest(request, "vehicles")
     const { data: updatedVehicle } = await supabase
       .from(vehiclesTableName)
       .select("fuel_efficiency, total_mileage")
