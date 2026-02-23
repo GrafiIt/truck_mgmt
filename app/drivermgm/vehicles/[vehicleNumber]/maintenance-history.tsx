@@ -277,6 +277,11 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
       console.log("[v0] Maintenance record result:", result)
 
       if (result.success) {
+        // 주유 기록인 경우 디버그 정보 표시
+        if (selectedField === "refueling" && result.debug) {
+          alert(`주유 기록 저장 완료!\n\n연비: ${result.debug.fuelEfficiency ? result.debug.fuelEfficiency.toFixed(2) + ' km/L' : '계산 안됨'}\n총주행거리: ${result.debug.totalMileage?.toLocaleString() || '0'} km`)
+        }
+        
         setIsAdding(false)
         setSelectedField("")
         setSearchQuery("")
@@ -1673,7 +1678,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="edit-month-start">월의 첫 주행거리 (km)</Label>
+                        <Label htmlFor="edit-month-start">월의 첫 주행���리 (km)</Label>
                         <Input
                           id="edit-month-start"
                           type="text"

@@ -139,7 +139,23 @@ export async function POST(request: NextRequest) {
     */
 
     console.log("[v0] === REFUELING RECORD API COMPLETED SUCCESSFULLY ===")
-    return NextResponse.json({ success: true })
+    
+    // 디버깅을 위한 정보 포함
+    const vehiclesTableName = await getTableNameFromRequest(request, "vehicles")
+    const { data: updatedVehicle } = await supabase
+      .from(vehiclesTableName)
+      .select("fuel_efficiency, total_mileage")
+      .eq("id", parseInt(vehicleId))
+      .single()
+    
+    return NextResponse.json({ 
+      success: true,
+      debug: {
+        fuelEfficiency: updatedVehicle?.fuel_efficiency,
+        totalMileage: updatedVehicle?.total_mileage,
+        message: "연비 계산 완료"
+      }
+    })
   } catch (error) {
     console.error("API error:", error)
     return NextResponse.json(
