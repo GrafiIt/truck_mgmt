@@ -211,10 +211,14 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
       formData.set("monthly_distance", monthlyDistance.toString())
 
     } else if (selectedField === "refueling") {
+      console.log("[v0] Processing refueling record...")
+      console.log("[v0] FormData entries:", Array.from(formData.entries()))
+      
       // 주유 항목만 기존 총주행거리 검증
       const refuelMileage = formData.get("mileage")
       if (refuelMileage) {
         const inputMileage = Number(refuelMileage)
+        console.log("[v0] Validating mileage:", { inputMileage, currentTotalMileage })
         if (inputMileage < currentTotalMileage) {
           alert(`입력한 주행거리(${inputMileage.toLocaleString()} km)가 총주행거리(${currentTotalMileage.toLocaleString()} km)보다 작습니다.\n\n주행거리는 항상 증가해야 합니다. 현재 총주행거리 이상의 값을 입력해주세요.`)
           return
@@ -225,6 +229,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
       if (refuelDate) {
         formData.append("maintenance_date", refuelDate)
       }
+      console.log("[v0] Refueling formData ready:", Array.from(formData.entries()))
     }
     // 나머지 정비항목은 주행거리 검증 없이 진행
 
@@ -248,10 +253,12 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
           body: formData,
         }).then((response) => response.json())
       } else if (selectedField === "refueling") {
+        console.log("[v0] Calling /api/drivermgm/add-refueling-record...")
         result = await fetch("/api/drivermgm/add-refueling-record", {
           method: "POST",
           body: formData,
         }).then((response) => response.json())
+        console.log("[v0] Refueling API response:", result)
       } else if (selectedField === "inspection") {
         result = await fetch("/api/drivermgm/add-inspection-record", {
           method: "POST",
@@ -1673,7 +1680,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                             const raw = parseNumberFromFormatted(e.target.value)
                             setEditValues({ ...editValues, month_start_mileage: raw })
                           }}
-                          placeholder="월의 첫 주행거리"
+                          placeholder="월의 �� 주행거리"
                         />
                       </div>
                       <div className="space-y-2">
