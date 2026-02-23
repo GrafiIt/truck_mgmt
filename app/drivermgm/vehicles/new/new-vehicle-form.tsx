@@ -160,6 +160,10 @@ export default function NewVehicleForm() {
                 <SelectItem value="HYUNDAI">HYUNDAI</SelectItem>
                 <SelectItem value="DAEWOO">DAEWOO</SelectItem>
                 <SelectItem value="VOLVO">VOLVO</SelectItem>
+                <SelectItem value="Scania">Scania</SelectItem>
+                <SelectItem value="MAN">MAN</SelectItem>
+                <SelectItem value="IVECO">IVECO</SelectItem>
+                <SelectItem value="KIA">KIA</SelectItem>
                 <SelectItem value="기타">기타</SelectItem>
               </SelectContent>
             </Select>
