@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
     const repairShop = formData.get("repair_shop") as string
     const maintenanceNotes = formData.get("maintenance_notes") as string
 
+    console.log("[v0] === REFUELING RECORD API CALLED ===")
     console.log("[v0] Refueling record data received:", {
       vehicleId,
       refuelDate,
@@ -24,9 +25,8 @@ export async function POST(request: NextRequest) {
       fuelCost
     })
 
-    
-
     if (!vehicleId || !refuelDate) {
+      console.log("[v0] ERROR: Missing required fields")
       return NextResponse.json(
         { success: false, error: "필수 정보가 누락되었습니다." },
         { status: 400 }
@@ -53,12 +53,14 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
-      console.error("Error adding refueling record:", error)
+      console.error("[v0] ERROR adding refueling record:", error)
       return NextResponse.json(
         { success: false, error: "주유 기록 추가 중 오류가 발생했습니다." },
         { status: 500 }
       )
     }
+    
+    console.log("[v0] Refueling record saved successfully to", tableName)
 
     // 연비 계산 및 차량 정보 업데이트
     if (mileage && fuelAmount) {
@@ -100,10 +102,13 @@ export async function POST(request: NextRequest) {
         .eq("id", parseInt(vehicleId))
       
       if (updateError) {
-        console.error("[v0] Error updating vehicle fuel efficiency:", updateError)
+        console.error("[v0] ERROR updating vehicle fuel efficiency:", updateError)
       } else {
-        console.log("[v0] Vehicle fuel efficiency updated successfully")
+        console.log("[v0] SUCCESS: Vehicle fuel efficiency updated to", efficiency, "km/L")
+        console.log("[v0] SUCCESS: Total mileage updated to", currentMileage, "km")
       }
+    } else {
+      console.log("[v0] WARNING: Skipping fuel efficiency calculation - missing mileage or fuelAmount")
     }
 
     // 주유 기록의 주행거리를 vehicles 테이블의 total_mileage에 반영
@@ -132,6 +137,7 @@ export async function POST(request: NextRequest) {
     }
     */
 
+    console.log("[v0] === REFUELING RECORD API COMPLETED SUCCESSFULLY ===")
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("API error:", error)
