@@ -71,14 +71,22 @@ export async function POST(request: NextRequest) {
       
       console.log("[v0] Calculating fuel efficiency...")
       
-      // 이전 주행거리 조회
-      const { data: vehicle } = await supabase
-        .from(vehiclesTableName)
-        .select("total_mileage")
-        .eq("id", parseInt(vehicleId))
-        .single()
+      // 이전 주유 기록의 주행거리 조회 (가장 최근 주유 기록)
+      const { data: previousRefueling } = await supabase
+        .from(tableName)
+        .select("mileage_value")
+        .eq("vehicle_id", parseInt(vehicleId))
+        .eq("field_name", "refueling")
+        .order("date_value", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(2) // 방금 저장한 것 포함 2개 조회
       
-      const previousMileage = vehicle?.total_mileage ?? 0
+      // 방금 저장한 기록을 제외한 이전 주유 기록의 주행거리
+      // previousRefueling[0]은 방금 저장한 것, previousRefueling[1]이 이전 주유 기록
+      const previousMileage = previousRefueling && previousRefueling.length > 1 
+        ? previousRefueling[1].mileage_value 
+        : 0
+      
       const currentMileage = parseInt(mileage)
       const fuelAmountValue = parseFloat(fuelAmount)
       const distance = currentMileage - previousMileage
