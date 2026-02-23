@@ -16,6 +16,14 @@ export async function POST(request: NextRequest) {
     const repairShop = formData.get("repair_shop") as string
     const maintenanceNotes = formData.get("maintenance_notes") as string
 
+    console.log("[v0] Refueling record data received:", {
+      vehicleId,
+      refuelDate,
+      mileage,
+      fuelAmount,
+      fuelCost
+    })
+
     
 
     if (!vehicleId || !refuelDate) {
@@ -30,7 +38,7 @@ export async function POST(request: NextRequest) {
     // 동적 테이블 이름 사용
     const tableName = await getTableNameFromRequest(request, "vehicle_field_history")
 
-    // insert 데이터 - 다른 API들과 일관된 방식으로 수정
+    // insert 데이터 - fuel_amount와 fuel_cost 컬럼 추가
     const { error } = await supabase.from(tableName).insert({
       vehicle_id: parseInt(vehicleId),
       maintenance_date: maintenanceDate || refuelDate,
@@ -41,6 +49,8 @@ export async function POST(request: NextRequest) {
       text_value: fuelAmount,
       text_value2: maintenanceNotes || null,
       cost: parseInt(fuelCost) || 0,
+      fuel_amount: parseFloat(fuelAmount) || null,
+      fuel_cost: parseInt(fuelCost) || 0,
       repair_shop: repairShop || null,
     })
 
