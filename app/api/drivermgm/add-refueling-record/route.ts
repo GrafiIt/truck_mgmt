@@ -38,6 +38,16 @@ export async function POST(request: NextRequest) {
 
     // 동적 테이블 이름 사용
     const tableName = await getTableNameFromRequest(request, "vehicle_field_history")
+    const vehiclesTableName = await getTableNameFromRequest(request, "vehicles")
+
+    // 주유 기록을 저장하기 전에 현재 총주행거리를 먼저 조회 (이것이 "이전 주행거리")
+    const { data: vehicleBeforeUpdate } = await supabase
+      .from(vehiclesTableName)
+      .select("total_mileage")
+      .eq("id", parseInt(vehicleId))
+      .single()
+    
+    const previousTotalMileage = vehicleBeforeUpdate?.total_mileage ?? 0
 
     // insert 데이터
     const { error } = await supabase.from(tableName).insert({
@@ -67,25 +77,10 @@ export async function POST(request: NextRequest) {
     let calculationDebug = { skipped: false, reason: "", previousMileage: 0, currentMileage: 0, distance: 0, fuelAmountValue: 0, efficiency: 0 }
     
     if (mileage && fuelAmount) {
-      const vehiclesTableName = await getTableNameFromRequest(request, "vehicles")
-      
       console.log("[v0] Calculating fuel efficiency...")
       
-      // 이전 주유 기록의 주행거리 조회 (가장 최근 주유 기록)
-      const { data: previousRefueling } = await supabase
-        .from(tableName)
-        .select("mileage_value")
-        .eq("vehicle_id", parseInt(vehicleId))
-        .eq("field_name", "refueling")
-        .order("date_value", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(2) // 방금 저장한 것 포함 2개 조회
-      
-      // 방금 저장한 기록을 제외한 이전 주유 기록의 주행거리
-      // previousRefueling[0]은 방금 저장한 것, previousRefueling[1]이 이전 주유 기록
-      const previousMileage = previousRefueling && previousRefueling.length > 1 
-        ? previousRefueling[1].mileage_value 
-        : 0
+      // 이전 주행거리 = 주유 기록 저장 전의 vehicles.total_mileage
+      const previousMileage = previousTotalMileage
       
       const currentMileage = parseInt(mileage)
       const fuelAmountValue = parseFloat(fuelAmount)
