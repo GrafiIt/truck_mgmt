@@ -5,6 +5,7 @@ import { getTableNameFromRequest } from "@/lib/table-utils"
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
+  console.log("[v0] ========== REFUELING API ROUTE ENTERED ==========")
   try {
     const formData = await request.formData()
     const vehicleId = formData.get("vehicle_id") as string
