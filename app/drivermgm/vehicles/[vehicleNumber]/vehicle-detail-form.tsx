@@ -100,6 +100,7 @@ export default function VehicleDetailForm({ vehicle, thresholds = [] }: { vehicl
   }
 
   const fuelEfficiency = vehicle.fuel_efficiency ? `${vehicle.fuel_efficiency.toFixed(2)} km/L` : "-"
+  const lastRefuelAmount = vehicle.last_refuel_amount ? `${vehicle.last_refuel_amount.toFixed(2)} L` : "-"
 
   const threshold = getThresholdForVehicleType(vehicle.vehicle_type, thresholds)
   const sh = (name: string, date: string | null, mileage: number | null) =>
@@ -238,6 +239,11 @@ export default function VehicleDetailForm({ vehicle, thresholds = [] }: { vehicl
           <div className="col-span-full md:col-span-1">
             <Label>연비</Label>
             <Input value={fuelEfficiency} disabled className="bg-gray-50" />
+          </div>
+
+          <div className="col-span-full md:col-span-1">
+            <Label>마지막 주유량</Label>
+            <Input value={lastRefuelAmount} disabled className="bg-gray-50" />
           </div>
 
           <div className="col-span-full md:col-span-1">

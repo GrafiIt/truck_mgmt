@@ -282,7 +282,8 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
           const calc = result.debug.calculation
           let debugMessage = `주유 기록 저장 완료!\n\n`
           debugMessage += `연비: ${result.debug.fuelEfficiency ? result.debug.fuelEfficiency.toFixed(2) + ' km/L' : '계산 안됨'}\n`
-          debugMessage += `총주행거리: ${result.debug.totalMileage?.toLocaleString() || '0'} km\n\n`
+          debugMessage += `총주행거리: ${result.debug.totalMileage?.toLocaleString() || '0'} km\n`
+          debugMessage += `마지막 주유량: ${result.debug.lastRefuelAmount?.toFixed(2) || '0'} L\n\n`
           
           if (calc) {
             if (calc.skipped) {
@@ -292,7 +293,8 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
               debugMessage += `- 이전 주행거리: ${calc.previousMileage.toLocaleString()} km\n`
               debugMessage += `- 현재 주행거리: ${calc.currentMileage.toLocaleString()} km\n`
               debugMessage += `- 주행한 거리: ${calc.distance.toLocaleString()} km\n`
-              debugMessage += `- 주유량: ${calc.fuelAmountValue} L\n`
+              debugMessage += `- 이전 주유량 (사용한 연료): ${calc.previousFuelAmount} L\n`
+              debugMessage += `- 현재 주유량 (방금 주입): ${calc.currentFuelAmount} L\n`
               debugMessage += `- 계산된 연비: ${calc.efficiency.toFixed(2)} km/L`
             }
           }
@@ -1367,7 +1369,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                         id="edit-notes"
                         value={editValues.text_value2 || ""}
                         onChange={(e) => setEditValues({ ...editValues, text_value2: e.target.value })}
-                        placeholder="정비 기타 사항을 입력하세요"
+                        placeholder="정��� 기타 사항을 입력하세요"
                         rows={3}
                       />
                     </div>
