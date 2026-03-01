@@ -27,7 +27,19 @@ import {
   getHighlightClass,
 } from "@/lib/notification-thresholds"
 
-export default function VehicleDetailForm({ vehicle, thresholds = [], lastRefuelAmount = 0 }: { vehicle: any; thresholds?: NotificationThreshold[]; lastRefuelAmount?: number }) {
+export default function VehicleDetailForm({
+  vehicle,
+  thresholds = [],
+  lastRefuelAmount = 0,
+  inspectionEmail1 = null,
+  inspectionEmail2 = null,
+}: {
+  vehicle: any
+  thresholds?: NotificationThreshold[]
+  lastRefuelAmount?: number
+  inspectionEmail1?: string | null
+  inspectionEmail2?: string | null
+}) {
   const router = useRouter()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
@@ -214,6 +226,49 @@ export default function VehicleDetailForm({ vehicle, thresholds = [], lastRefuel
               />
               <Input value={vehicle.inspection_name || ""} disabled className="bg-gray-50" placeholder="검사명" />
             </div>
+            {(() => {
+              const inspectionDate = vehicle.last_inspection_date
+                ? new Date(vehicle.last_inspection_date)
+                : null
+              const today = new Date()
+              const daysPassed = inspectionDate
+                ? Math.floor((today.getTime() - inspectionDate.getTime()) / (1000 * 60 * 60 * 24))
+                : null
+              const daysUntilBlue = daysPassed !== null ? 150 - daysPassed : null
+              const daysUntilRed = daysPassed !== null ? 180 - daysPassed : null
+
+              const emailText = [inspectionEmail1, inspectionEmail2].filter(Boolean).join(", ")
+
+              let remainingLabel = ""
+              let remainingClass = "text-gray-500"
+              if (daysUntilRed !== null) {
+                if (daysUntilRed <= 0) {
+                  remainingLabel = `위험 발송 초과 (${Math.abs(daysUntilRed)}일 경과)`
+                  remainingClass = "text-red-600 font-semibold"
+                } else if (daysUntilBlue !== null && daysUntilBlue <= 0) {
+                  remainingLabel = `경고 발송까지 초과 / 위험까지 -${daysUntilRed}일`
+                  remainingClass = "text-blue-600 font-semibold"
+                } else if (daysUntilBlue !== null) {
+                  remainingLabel = `경고까지 -${daysUntilBlue}일 / 위험까지 -${daysUntilRed}일`
+                  remainingClass = "text-gray-500"
+                }
+              }
+
+              if (!emailText && !remainingLabel) return null
+
+              return (
+                <div className="mt-1 space-y-0.5" style={{ fontSize: "11px" }}>
+                  {emailText && (
+                    <p className="text-gray-500">
+                      알람 수신: {emailText}
+                    </p>
+                  )}
+                  {remainingLabel && (
+                    <p className={remainingClass}>{remainingLabel}</p>
+                  )}
+                </div>
+              )
+            })()}
           </div>
           <div>
             <Label>정기검사결과</Label>
