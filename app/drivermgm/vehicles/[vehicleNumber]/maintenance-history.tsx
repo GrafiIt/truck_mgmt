@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Search, Trash2, Edit2 } from "lucide-react"
+import { Plus, Search, Trash2, Edit2, Download } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Dialog,
@@ -451,6 +451,96 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
     return sorted
   }, [records, filterField, contentSearchQuery, filterPeriod, startDate, endDate, sortBy])
 
+  const handleExcelDownload = useCallback(() => {
+    const headers = [
+      "입력 일자",
+      "정비 항목",
+      "정비실행일",
+      "주행거리 (km)",
+      "수리업체",
+      "금액 (원)",
+      "정비 기타 사항",
+      "주유량 (리터)",
+      "주유비 (원)",
+      "한줄요약",
+      "정기점검명",
+      "정기점검결과",
+      "담당자 E-mail 1",
+      "담당자 E-mail 2",
+      "합격/불합격 참고사항",
+      "주행월",
+      "월의 첫 주행기록 (km)",
+      "월의 마지막 주행기록 (km)",
+      "입력한 달의 주행거리 (km)",
+      "생성일시",
+    ]
+
+    const escapeCSV = (value: string | number | null | undefined) => {
+      if (value === null || value === undefined) return ""
+      const str = String(value)
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`
+      }
+      return str
+    }
+
+    const rows = filteredRecords.map((r) => {
+      // monthly_mileage 필드는 text_value에 JSON으로 저장됨
+      let mileageMonth = ""
+      let monthStartMileageVal = ""
+      let monthEndMileageVal = ""
+      let monthlyDistance = ""
+      if (r.field_name === "monthly_mileage" && r.text_value) {
+        try {
+          const parsed = JSON.parse(r.text_value)
+          mileageMonth = parsed.mileage_month || ""
+          monthStartMileageVal = parsed.month_start_mileage?.toString() || ""
+          monthEndMileageVal = parsed.month_end_mileage?.toString() || ""
+          const dist = Number(parsed.month_end_mileage) - Number(parsed.month_start_mileage)
+          monthlyDistance = !isNaN(dist) ? dist.toString() : ""
+        } catch {}
+      }
+
+      return [
+        escapeCSV(r.maintenance_date),
+        escapeCSV(r.field_label),
+        escapeCSV(r.date_value || ""),
+        escapeCSV(r.mileage_value ?? ""),
+        escapeCSV(r.repair_shop ?? ""),
+        escapeCSV(r.cost ?? ""),
+        escapeCSV(r.text_value2 ?? ""),
+        escapeCSV(r.fuel_amount ?? ""),
+        escapeCSV(r.fuel_cost ?? ""),
+        escapeCSV(r.others_summary ?? ""),
+        escapeCSV(r.inspection_name ?? ""),
+        escapeCSV(r.inspection_result ?? ""),
+        escapeCSV(r.email_1 ?? ""),
+        escapeCSV(r.email_2 ?? ""),
+        escapeCSV((r as any).inspection_notes ?? ""),
+        escapeCSV(mileageMonth),
+        escapeCSV(monthStartMileageVal),
+        escapeCSV(monthEndMileageVal),
+        escapeCSV(monthlyDistance),
+        escapeCSV(r.created_at ?? ""),
+      ]
+    })
+
+    const csvContent =
+      "\uFEFF" +
+      [headers.join(","), ...rows.map((row) => row.join(","))].join("\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "")
+    link.href = url
+    link.download = `정비이력_${vehicleNumber}_${today}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }, [filteredRecords, vehicleNumber])
+
   // 페이지네이션된 데이터 계산
   const paginatedRecords = useMemo(() => {
     const startIdx = (currentPage - 1) * RECORDS_PER_PAGE
@@ -560,10 +650,20 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>정비 이력</CardTitle>
-            <Button onClick={() => setIsAdding(!isAdding)}>
-              <Plus className="w-4 h-4 mr-2" />
-              {isAdding ? "취소" : "이력 추가"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setIsAdding(!isAdding)}>
+                <Plus className="w-4 h-4 mr-2" />
+                {isAdding ? "취소" : "이력 추가"}
+              </Button>
+              <Button
+                variant="outline"
+                className="border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800 dark:border-green-500 dark:text-green-400 dark:hover:bg-green-950"
+                onClick={handleExcelDownload}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                엑셀다운
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
