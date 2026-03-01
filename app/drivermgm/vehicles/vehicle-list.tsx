@@ -3,8 +3,8 @@
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
-import { useState, useMemo } from "react"
+import { Plus, Download } from "lucide-react"
+import { useState, useMemo, useCallback } from "react"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableRow, TableHeader } from "@/components/ui/table"
 import {
@@ -75,6 +75,110 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
     return vehicles.filter((vehicle) => vehicle.vehicle_number.toLowerCase().includes(searchTerm.toLowerCase()))
   }, [searchTerm, vehicles])
 
+  const handleExcelDownload = useCallback(() => {
+    const headers = [
+      "Transporter",
+      "운전원",
+      "차량번호",
+      "제조사",
+      "차량 종류",
+      "차량출고일",
+      "차량연식",
+      "총주행거리",
+      "전월주행거리",
+      "정기검사(최근)",
+      "정기검사결과",
+      "구리스(날짜)",
+      "구리스(주행)",
+      "엔진오일(날짜)",
+      "엔진오일(주행)",
+      "미션오일(날짜)",
+      "미션오일(주행)",
+      "경유필터(날짜)",
+      "경유필터(주행)",
+      "데후오일(날짜)",
+      "데후오일(주행)",
+      "파워오일(주행)",
+      "에어드라이어(날짜)",
+      "드라이필터(주행)",
+      "수분분리기(주행)",
+      "라이닝(날짜)",
+      "타이어(날짜)",
+      "타이어(주행)",
+      "배터리(날짜)",
+      "배터리(주행)",
+      "에어탱크(날짜)",
+      "축베어링(날짜)",
+      "PTO조인트(날짜)",
+      "PTO펌프(날짜)",
+      "히터(날짜)",
+      "기타",
+    ]
+
+    const escapeCSV = (value: string | number | null | undefined) => {
+      if (value === null || value === undefined) return ""
+      const str = String(value)
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`
+      }
+      return str
+    }
+
+    const rows = filteredVehicles.map((v) => [
+      escapeCSV(v.transporter),
+      escapeCSV(v.driver_name),
+      escapeCSV(v.vehicle_number),
+      escapeCSV(v.manufacturer),
+      escapeCSV(v.vehicle_type || "-"),
+      escapeCSV(v.release_date),
+      escapeCSV(v.vehicle_age),
+      escapeCSV(v.total_mileage),
+      escapeCSV((v as any).previous_month_mileage || 0),
+      escapeCSV(v.last_inspection_date || "-"),
+      escapeCSV(v.inspection_result),
+      escapeCSV(v.grease_date),
+      escapeCSV(v.grease_mileage),
+      escapeCSV(v.engine_oil_date),
+      escapeCSV(v.engine_oil_mileage),
+      escapeCSV(v.mission_oil_date),
+      escapeCSV(v.mission_oil_mileage),
+      escapeCSV(v.diesel_filter_date),
+      escapeCSV(v.diesel_filter_mileage),
+      escapeCSV(v.defu_oil_date),
+      escapeCSV(v.defu_oil_mileage),
+      escapeCSV(v.power_oil_mileage),
+      escapeCSV(v.air_dryer_date),
+      escapeCSV(v.dry_filter_mileage),
+      escapeCSV(v.water_separator_mileage),
+      escapeCSV(v.lining_date),
+      escapeCSV(v.tire_date),
+      escapeCSV(v.tire_mileage),
+      escapeCSV(v.battery_date),
+      escapeCSV(v.battery_mileage),
+      escapeCSV(v.air_tank_date),
+      escapeCSV(v.axle_bearing_date),
+      escapeCSV(v.pto_joint_date),
+      escapeCSV(v.pto_pump_date),
+      escapeCSV(v.heater_date || "-"),
+      escapeCSV(v.others_summary || "-"),
+    ])
+
+    const csvContent =
+      "\uFEFF" + // BOM for Excel Korean encoding
+      [headers.join(","), ...rows.map((r) => r.join(","))].join("\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "")
+    link.href = url
+    link.download = `차량목록_${today}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }, [filteredVehicles])
+
   return (
     <Card className="p-6">
       <div className="mb-4 flex items-center justify-between">
@@ -92,12 +196,22 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
             onChange={(e) => setSearchTerm(e.target.value)}
             className="mr-2"
           />
-          <Link href="/drivermgm/vehicles/new">
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              신규 등록
+          <div className="flex flex-col gap-2">
+            <Link href="/drivermgm/vehicles/new">
+              <Button className="gap-2 w-full">
+                <Plus className="h-4 w-4" />
+                신규 등록
+              </Button>
+            </Link>
+            <Button
+              variant="outline"
+              className="gap-2 w-full border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800 dark:border-green-500 dark:text-green-400 dark:hover:bg-green-950"
+              onClick={handleExcelDownload}
+            >
+              <Download className="h-4 w-4" />
+              엑셀다운
             </Button>
-          </Link>
+          </div>
         </div>
       </div>
 
