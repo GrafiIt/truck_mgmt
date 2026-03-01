@@ -41,11 +41,23 @@ export default async function VehicleDetailPage({
   const lastRefueling = maintenanceRecords.find(record => record.field_name === "refueling")
   const lastRefuelAmount = lastRefueling?.text_value ? parseFloat(lastRefueling.text_value) : 0
 
+  // 가장 최근 정기검사 기록에서 이메일 추출
+  // maintenanceRecords는 actions.ts에서 이미 maintenance_date 내림차순 정렬된 상태
+  const lastInspection = maintenanceRecords.find(record => record.type === "inspection")
+  const inspectionEmail1 = lastInspection?.email_1 ?? null
+  const inspectionEmail2 = lastInspection?.email_2 ?? null
+
   return (
     <div className="min-h-screen bg-muted">
       <VehicleHeader />
       <main className="container mx-auto px-4 py-6 space-y-6">
-        <VehicleDetailForm vehicle={vehicle} thresholds={thresholds} lastRefuelAmount={lastRefuelAmount} />
+        <VehicleDetailForm
+          vehicle={vehicle}
+          thresholds={thresholds}
+          lastRefuelAmount={lastRefuelAmount}
+          inspectionEmail1={inspectionEmail1}
+          inspectionEmail2={inspectionEmail2}
+        />
         <MaintenanceHistory
           vehicleId={vehicle.id}
           vehicleNumber={vehicle.vehicle_number}
