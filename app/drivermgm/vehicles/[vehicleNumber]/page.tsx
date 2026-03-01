@@ -42,9 +42,8 @@ export default async function VehicleDetailPage({
   const lastRefuelAmount = lastRefueling?.text_value ? parseFloat(lastRefueling.text_value) : 0
 
   // 가장 최근 정기검사 기록에서 이메일 추출
-  const lastInspection = maintenanceRecords
-    .filter(record => record.type === "inspection")
-    .sort((a, b) => new Date(b.date_value ?? "").getTime() - new Date(a.date_value ?? "").getTime())[0]
+  // maintenanceRecords는 actions.ts에서 이미 maintenance_date 내림차순 정렬된 상태
+  const lastInspection = maintenanceRecords.find(record => record.type === "inspection")
   const inspectionEmail1 = lastInspection?.email_1 ?? null
   const inspectionEmail2 = lastInspection?.email_2 ?? null
 
