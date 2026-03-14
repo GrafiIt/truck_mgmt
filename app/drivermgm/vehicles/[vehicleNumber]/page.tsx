@@ -47,19 +47,19 @@ export default async function VehicleDetailPage({
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   
-  const lastInspection = inspectionRecords.length > 0
-    ? inspectionRecords
-        // 현재 날짜 이전의 레코드만 필터링
-        .filter(record => {
-          const recordDate = record.date_value ? new Date(record.date_value) : null
-          return recordDate && recordDate.getTime() <= today.getTime()
-        })
-        // 날짜가 가장 최신인 레코드 찾기
-        .reduce((latest, current) => {
-          const latestDate = latest.date_value ? new Date(latest.date_value).getTime() : 0
-          const currentDate = current.date_value ? new Date(current.date_value).getTime() : 0
-          return currentDate > latestDate ? current : latest
-        }, null)
+  // 현재 날짜 이전의 레코드만 필터링
+  const pastInspectionRecords = inspectionRecords.filter(record => {
+    const recordDate = record.date_value ? new Date(record.date_value) : null
+    return recordDate && recordDate.getTime() <= today.getTime()
+  })
+  
+  // 날짜가 가장 최신인 레코드 찾기
+  const lastInspection = pastInspectionRecords.length > 0
+    ? pastInspectionRecords.reduce((latest, current) => {
+        const latestDate = latest.date_value ? new Date(latest.date_value).getTime() : 0
+        const currentDate = current.date_value ? new Date(current.date_value).getTime() : 0
+        return currentDate > latestDate ? current : latest
+      })
     : null
   
   const inspectionEmail1 = lastInspection?.email_1 ?? null
