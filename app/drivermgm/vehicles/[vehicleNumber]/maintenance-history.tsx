@@ -307,6 +307,8 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
         setSearchQuery("")
         setOthersSummary("")
         setInspectionNotes("")
+        setInspectionEmail1("")
+        setInspectionEmail2("")
         setRepairShop("")
         setCost("")
         setFirstMileage("")
@@ -1699,7 +1701,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                         id="edit-notes-fuel"
                         value={editValues.text_value2 || ""}
                         onChange={(e) => setEditValues({ ...editValues, text_value2: e.target.value })}
-                        placeholder="정비 기타 사항을 입력하세요"
+                        placeholder="정�� 기타 사항을 입력하세요"
                         rows={3}
                       />
                     </div>
