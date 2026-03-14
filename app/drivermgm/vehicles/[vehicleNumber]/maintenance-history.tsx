@@ -261,21 +261,15 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
           method: "POST",
           body: formData,
         }).then((response) => response.json())
-        console.log("[v0] Refueling API response:", result)
       } else if (selectedField === "inspection") {
-        console.log("[v0] Inspection formData entries BEFORE:", Array.from(formData.entries()))
-        console.log("[v0] inspectionEmail1:", inspectionEmail1, "inspectionEmail2:", inspectionEmail2)
-        
         // Controlled input이 formData에 포함되지 않을 수 있으므로 명시적으로 추가
         formData.set("email_1", inspectionEmail1 || "")
         formData.set("email_2", inspectionEmail2 || "")
         
-        console.log("[v0] Inspection formData entries AFTER:", Array.from(formData.entries()))
         result = await fetch("/api/drivermgm/add-inspection-record", {
           method: "POST",
           body: formData,
         }).then((response) => response.json())
-        console.log("[v0] Inspection API result:", result)
       } else {
         result = await fetch("/api/drivermgm/save-maintenance-record", {
           method: "POST",

@@ -42,34 +42,28 @@ export default async function VehicleDetailPage({
   const lastRefuelAmount = lastRefueling?.text_value ? parseFloat(lastRefueling.text_value) : 0
 
   // 가장 최근 정기검사 기록에서 이메일 추출
-  // inspection 타입인 레코드들 중에서 inspection_date(정비실행일)가 가장 최신인 것을 찾음
+  // inspection 타입인 레코드들 중에서 현재 날짜 이전의 가장 최신 날짜를 찾음
   const inspectionRecords = maintenanceRecords.filter(record => record.type === "inspection")
-  console.log("[v0] All inspection records:", inspectionRecords.map(r => ({
-    id: r.id,
-    date_value: r.date_value,
-    maintenance_date: r.maintenance_date,
-    email_1: r.email_1,
-    email_2: r.email_2,
-  })))
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
   
   const lastInspection = inspectionRecords.length > 0
-    ? inspectionRecords.reduce((latest, current) => {
-        const latestDate = latest.date_value ? new Date(latest.date_value).getTime() : 0
-        const currentDate = current.date_value ? new Date(current.date_value).getTime() : 0
-        return currentDate > latestDate ? current : latest
-      })
+    ? inspectionRecords
+        // 현재 날짜 이전의 레코드만 필터링
+        .filter(record => {
+          const recordDate = record.date_value ? new Date(record.date_value) : null
+          return recordDate && recordDate.getTime() <= today.getTime()
+        })
+        // 날짜가 가장 최신인 레코드 찾기
+        .reduce((latest, current) => {
+          const latestDate = latest.date_value ? new Date(latest.date_value).getTime() : 0
+          const currentDate = current.date_value ? new Date(current.date_value).getTime() : 0
+          return currentDate > latestDate ? current : latest
+        }, null)
     : null
-  
-  console.log("[v0] Selected lastInspection:", lastInspection ? {
-    id: lastInspection.id,
-    date_value: lastInspection.date_value,
-    email_1: lastInspection.email_1,
-    email_2: lastInspection.email_2,
-  } : null)
   
   const inspectionEmail1 = lastInspection?.email_1 ?? null
   const inspectionEmail2 = lastInspection?.email_2 ?? null
-  console.log("[v0] Final emails:", { inspectionEmail1, inspectionEmail2 })
 
   return (
     <div className="min-h-screen bg-muted">
