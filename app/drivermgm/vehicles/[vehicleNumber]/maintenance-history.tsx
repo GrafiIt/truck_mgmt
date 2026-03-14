@@ -263,10 +263,12 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
         }).then((response) => response.json())
         console.log("[v0] Refueling API response:", result)
       } else if (selectedField === "inspection") {
+        console.log("[v0] Inspection formData entries:", Array.from(formData.entries()))
         result = await fetch("/api/drivermgm/add-inspection-record", {
           method: "POST",
           body: formData,
         }).then((response) => response.json())
+        console.log("[v0] Inspection API result:", result)
       } else {
         result = await fetch("/api/drivermgm/save-maintenance-record", {
           method: "POST",
