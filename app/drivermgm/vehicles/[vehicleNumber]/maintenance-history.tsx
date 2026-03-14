@@ -261,8 +261,11 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
           method: "POST",
           body: formData,
         }).then((response) => response.json())
-        console.log("[v0] Refueling API response:", result)
       } else if (selectedField === "inspection") {
+        // Controlled input이 formData에 포함되지 않을 수 있으므로 명시적으로 추가
+        formData.set("email_1", inspectionEmail1 || "")
+        formData.set("email_2", inspectionEmail2 || "")
+        
         result = await fetch("/api/drivermgm/add-inspection-record", {
           method: "POST",
           body: formData,
@@ -307,6 +310,8 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
         setSearchQuery("")
         setOthersSummary("")
         setInspectionNotes("")
+        setInspectionEmail1("")
+        setInspectionEmail2("")
         setRepairShop("")
         setCost("")
         setFirstMileage("")
@@ -361,7 +366,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
         // 검색 대상 필드 결정
         let searchTargets: string[] = []
 
-        // 컬럼별로 검색 대상 필드 설정
+        // 컬럼별로 검색 대상 필드 ��정
         if (record.field_name === "refueling") {
           // 주유: 수리업체(주유소명), 금액(주유비)
           searchTargets = [
@@ -1699,7 +1704,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                         id="edit-notes-fuel"
                         value={editValues.text_value2 || ""}
                         onChange={(e) => setEditValues({ ...editValues, text_value2: e.target.value })}
-                        placeholder="정비 기타 사항을 입력하세요"
+                        placeholder="정�� 기타 사항을 입력하세요"
                         rows={3}
                       />
                     </div>

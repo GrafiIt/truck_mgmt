@@ -42,8 +42,26 @@ export default async function VehicleDetailPage({
   const lastRefuelAmount = lastRefueling?.text_value ? parseFloat(lastRefueling.text_value) : 0
 
   // 가장 최근 정기검사 기록에서 이메일 추출
-  // maintenanceRecords는 actions.ts에서 이미 maintenance_date 내림차순 정렬된 상태
-  const lastInspection = maintenanceRecords.find(record => record.type === "inspection")
+  // inspection 타입인 레코드들 중에서 현재 날짜 이전의 가장 최신 날짜를 찾음
+  const inspectionRecords = maintenanceRecords.filter(record => record.type === "inspection")
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  
+  // 현재 날짜 이전의 레코드만 필터링
+  const pastInspectionRecords = inspectionRecords.filter(record => {
+    const recordDate = record.date_value ? new Date(record.date_value) : null
+    return recordDate && recordDate.getTime() <= today.getTime()
+  })
+  
+  // 날짜가 가장 최신인 레코드 찾기
+  const lastInspection = pastInspectionRecords.length > 0
+    ? pastInspectionRecords.reduce((latest, current) => {
+        const latestDate = latest.date_value ? new Date(latest.date_value).getTime() : 0
+        const currentDate = current.date_value ? new Date(current.date_value).getTime() : 0
+        return currentDate > latestDate ? current : latest
+      })
+    : null
+  
   const inspectionEmail1 = lastInspection?.email_1 ?? null
   const inspectionEmail2 = lastInspection?.email_2 ?? null
 
