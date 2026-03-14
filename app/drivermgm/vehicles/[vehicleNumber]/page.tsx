@@ -53,14 +53,19 @@ export default async function VehicleDetailPage({
     return recordDate && recordDate.getTime() <= today.getTime()
   })
   
-  // 날짜가 가장 최신인 레코드 찾기
-  const lastInspection = pastInspectionRecords.length > 0
-    ? pastInspectionRecords.reduce((latest, current) => {
-        const latestDate = latest.date_value ? new Date(latest.date_value).getTime() : 0
-        const currentDate = current.date_value ? new Date(current.date_value).getTime() : 0
-        return currentDate > latestDate ? current : latest
-      })
-    : null
+  // 날짜가 가장 최신인 레코드 찾기 (배열이 비어있지 않은 경우에만)
+  let lastInspection = null
+  if (pastInspectionRecords.length > 0) {
+    lastInspection = pastInspectionRecords[0]
+    for (let i = 1; i < pastInspectionRecords.length; i++) {
+      const current = pastInspectionRecords[i]
+      const latestDate = lastInspection.date_value ? new Date(lastInspection.date_value).getTime() : 0
+      const currentDate = current.date_value ? new Date(current.date_value).getTime() : 0
+      if (currentDate > latestDate) {
+        lastInspection = current
+      }
+    }
+  }
   
   const inspectionEmail1 = lastInspection?.email_1 ?? null
   const inspectionEmail2 = lastInspection?.email_2 ?? null
