@@ -29,6 +29,7 @@ export interface InspectionReminderEmailParams {
  * 정기검사 알람 이메일을 발송합니다.
  * level === "warning": 150일 이상 (파란색 경고)
  * level === "danger":  180일 이상 (빨간색 위험)
+ * 발신자 주소: no-reply@1004.help (RESEND_FROM_EMAIL 환경 변수)
  */
 export async function sendInspectionReminderEmail(params: InspectionReminderEmailParams): Promise<void> {
   const { to, vehicleNumber, driverName, inspectionDate, daysSince, level } = params
