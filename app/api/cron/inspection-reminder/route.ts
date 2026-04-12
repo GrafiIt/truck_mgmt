@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { sendInspectionReminderEmail } from "@/lib/resend"
 
-// 정기검사 경과 기준 (lib/notification-thresholds.ts 의 "정기검사" case와 동일)
-const DAYS_DANGER = 180  // 빨간색 위험 (180일 이상)
-const DAYS_WARNING = 150 // 파란색 경고 (150일 이상)
+// 기본값 (notification_thresholds 테이블에 설정이 없을 때 사용)
+const DEFAULT_DAYS_DANGER = 180  // 빨간색 위험 (180일 이상)
+const DEFAULT_DAYS_WARNING = 150 // 파란색 경고 (150일 이상)
+
+// 차량 종류별 임계값 타입
+interface InspectionThreshold {
+  vehicle_type: string
+  inspection_days_red: number
+  inspection_days_blue: number
+}
 
 function daysBetween(dateStr: string): number {
   const target = new Date(dateStr)
@@ -83,12 +90,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 차량 정보(번호, 기사명) 조회
+    // 차량 정보(번호, 기사명, 차량종류) 조회
     const vehicleIds = Array.from(latestByVehicle.keys())
     const { data: vehicles, error: vehiclesError } = await supabase
       .schema("drivermgm")
       .from(vehiclesTable)
-      .select("id, vehicle_number, driver_name")
+      .select("id, vehicle_number, driver_name, vehicle_type")
       .in("id", vehicleIds)
 
     if (vehiclesError) {
@@ -97,9 +104,28 @@ export async function GET(request: NextRequest) {
       continue
     }
 
-    const vehicleMap = new Map<number, { vehicle_number: string; driver_name: string | null }>()
+    const vehicleMap = new Map<number, { vehicle_number: string; driver_name: string | null; vehicle_type: string | null }>()
     for (const v of vehicles ?? []) {
-      vehicleMap.set(v.id, { vehicle_number: v.vehicle_number, driver_name: v.driver_name })
+      vehicleMap.set(v.id, { vehicle_number: v.vehicle_number, driver_name: v.driver_name, vehicle_type: v.vehicle_type })
+    }
+
+    // 차량 종류별 정기검사 임계값 조회
+    const { data: thresholds, error: thresholdsError } = await supabase
+      .schema("drivermgm")
+      .from("notification_thresholds")
+      .select("vehicle_type, inspection_days_red, inspection_days_blue")
+
+    if (thresholdsError) {
+      console.error(`[cron] Failed to fetch notification_thresholds:`, thresholdsError)
+    }
+
+    // 차량 종류별 임계값 맵 생성 (조회 실패 시 빈 Map)
+    const thresholdMap = new Map<string, { daysRed: number; daysBlue: number }>()
+    for (const t of thresholds ?? []) {
+      thresholdMap.set(t.vehicle_type, {
+        daysRed: t.inspection_days_red ?? DEFAULT_DAYS_DANGER,
+        daysBlue: t.inspection_days_blue ?? DEFAULT_DAYS_WARNING,
+      })
     }
 
     for (const [vehicleId, record] of latestByVehicle.entries()) {
@@ -112,11 +138,18 @@ export async function GET(request: NextRequest) {
         continue
       }
 
+      // 차량 정보 및 차량 종류별 임계값 조회
+      const vehicle = vehicleMap.get(vehicleId)
+      const vehicleType = vehicle?.vehicle_type
+      const threshold = vehicleType ? thresholdMap.get(vehicleType) : null
+      const daysWarning = threshold?.daysBlue ?? DEFAULT_DAYS_WARNING
+      const daysDanger = threshold?.daysRed ?? DEFAULT_DAYS_DANGER
+
       // 경과 일수 계산
       const daysSince = daysBetween(record.inspection_date)
 
-      // 경고/위험 구간이 아니면 스킵
-      if (daysSince < DAYS_WARNING) {
+      // 경고/위험 구간이 아니면 스킵 (차량 종류별 기준 적용)
+      if (daysSince < daysWarning) {
         results[code].skipped++
         continue
       }
@@ -127,8 +160,7 @@ export async function GET(request: NextRequest) {
         continue
       }
 
-      const level = daysSince >= DAYS_DANGER ? "danger" : "warning"
-      const vehicle = vehicleMap.get(vehicleId)
+      const level = daysSince >= daysDanger ? "danger" : "warning"
 
       try {
         await sendInspectionReminderEmail({

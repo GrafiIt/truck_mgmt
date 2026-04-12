@@ -26,6 +26,9 @@ export interface NotificationThreshold {
   air_tank_days_blue: number
   axle_bearing_days_red: number
   axle_bearing_days_blue: number
+  // 정기검사 알림 기준 (일)
+  inspection_days_red: number
+  inspection_days_blue: number
 }
 
 // Default thresholds (fallback when no vehicle type match)
@@ -57,6 +60,9 @@ const DEFAULT_THRESHOLD: NotificationThreshold = {
   air_tank_days_blue: 1088,
   axle_bearing_days_red: 1460,
   axle_bearing_days_blue: 1453,
+  // 정기검사 기본값: 경고 150일 이상, 위험 180일 이상
+  inspection_days_red: 180,
+  inspection_days_blue: 150,
 }
 
 export function getThresholdForVehicleType(
@@ -111,7 +117,7 @@ export function shouldHighlightWithThreshold(
     case "기타":
       return daysDiff >= 365
     case "정기검사":
-      return daysDiff >= 180
+      return daysDiff >= (threshold.inspection_days_red ?? 180)
     default:
       return false
   }
@@ -163,7 +169,9 @@ export function shouldWarnWithThreshold(
     case "기타":
       return daysDiff >= 358 && daysDiff < 365
     case "정기검사":
-      return daysDiff >= 150 && daysDiff < 180
+      const inspBlue = threshold.inspection_days_blue ?? 150
+      const inspRed = threshold.inspection_days_red ?? 180
+      return daysDiff >= inspBlue && daysDiff < inspRed
     default:
       return false
   }

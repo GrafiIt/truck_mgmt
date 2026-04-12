@@ -38,6 +38,9 @@ interface NotificationThreshold {
   air_tank_days_blue: number
   axle_bearing_days_red: number
   axle_bearing_days_blue: number
+  // 정기검사 알림 기준 (일)
+  inspection_days_red: number
+  inspection_days_blue: number
 }
 
 interface Props {
@@ -78,6 +81,7 @@ export default function NotificationThresholdForm({ vehicleType, threshold }: Pr
       { red: "battery_days_red", blue: "battery_days_blue", name: "배터리" },
       { red: "air_tank_days_red", blue: "air_tank_days_blue", name: "에어탱크" },
       { red: "axle_bearing_days_red", blue: "axle_bearing_days_blue", name: "축베어링" },
+      { red: "inspection_days_red", blue: "inspection_days_blue", name: "정기검사" },
     ]
 
     // km 기준 검사
@@ -216,6 +220,16 @@ export default function NotificationThresholdForm({ vehicleType, threshold }: Pr
     },
   ]
 
+  // 정기검사 알림 설정 항목 (별도 섹션)
+  const inspectionItem = {
+    title: "정기검사 알림 기간 설정",
+    description: "정기검사 경과 일수에 따른 이메일 알림 기준을 설정합니다.",
+    fields: [
+      { name: "inspection_days_red", label: "위험(빨간색) 메일 발송 기준 (일 이상)", type: "days", defaultValue: 180 },
+      { name: "inspection_days_blue", label: "경고(파란색) 메일 발송 기준 (일 이상)", type: "days", defaultValue: 150 },
+    ],
+  }
+
   return (
     <Card className="p-6 max-w-4xl mx-auto">
       <div className="mb-6 flex items-center gap-4">
@@ -271,6 +285,46 @@ export default function NotificationThresholdForm({ vehicleType, threshold }: Pr
             </div>
           </div>
         ))}
+
+        {/* 정기검사 알림 기간 설정 섹션 */}
+        <div className="border-t-2 border-amber-300 dark:border-amber-600 pt-6 mt-6">
+          <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+            <h3 className="text-lg font-semibold text-amber-800 dark:text-amber-200 mb-2">
+              {inspectionItem.title}
+            </h3>
+            <p className="text-sm text-amber-700 dark:text-amber-300">
+              {inspectionItem.description}
+            </p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+              * 기본값: 경고(파란색) 150일 이상, 위험(빨간색) 180일 이상
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {inspectionItem.fields.map((field) => (
+              <div key={field.name} className="space-y-2">
+                <Label htmlFor={field.name} className={field.name.includes("red") ? "text-red-600 dark:text-red-400" : "text-blue-600 dark:text-blue-400"}>
+                  {field.label}
+                </Label>
+                <Input
+                  id={field.name}
+                  type="number"
+                  min="1"
+                  value={formData[field.name as keyof NotificationThreshold] ?? field.defaultValue}
+                  onChange={(e) => handleChange(field.name as keyof NotificationThreshold, e.target.value)}
+                  placeholder={`기본값: ${field.defaultValue}일`}
+                  className={field.name.includes("red") 
+                    ? "border-red-300 focus:border-red-500 dark:border-red-700" 
+                    : "border-blue-300 focus:border-blue-500 dark:border-blue-700"}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {field.name.includes("red") 
+                    ? "이 일수 이상 경과 시 위험(빨간색) 이메일 발송" 
+                    : "이 일수 이상 경과 시 경고(파란색) 이메일 발송"}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <div className="flex justify-end gap-2 pt-4">
           <Link href="/drivermgm/vehicles/notification-settings">
