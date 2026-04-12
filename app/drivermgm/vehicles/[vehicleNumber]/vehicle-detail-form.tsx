@@ -234,8 +234,11 @@ export default function VehicleDetailForm({
               const daysPassed = inspectionDate
                 ? Math.floor((today.getTime() - inspectionDate.getTime()) / (1000 * 60 * 60 * 24))
                 : null
-              const daysUntilBlue = daysPassed !== null ? 150 - daysPassed : null
-              const daysUntilRed = daysPassed !== null ? 180 - daysPassed : null
+              // 차량 종류별 정기검사 임계값 사용
+              const inspectionDaysBlue = threshold.inspection_days_blue ?? 150
+              const inspectionDaysRed = threshold.inspection_days_red ?? 180
+              const daysUntilBlue = daysPassed !== null ? inspectionDaysBlue - daysPassed : null
+              const daysUntilRed = daysPassed !== null ? inspectionDaysRed - daysPassed : null
 
               const emailText = [inspectionEmail1, inspectionEmail2].filter(Boolean).join(", ")
 
@@ -246,10 +249,10 @@ export default function VehicleDetailForm({
                   remainingLabel = `위험 발송 초과 (${Math.abs(daysUntilRed)}일 경과)`
                   remainingClass = "text-red-600 font-semibold"
                 } else if (daysUntilBlue !== null && daysUntilBlue <= 0) {
-                  remainingLabel = `경고 발송까지 초과 / 위험까지 -${daysUntilRed}일`
+                  remainingLabel = `경고 발송까지 초과 / 위험까지 ${daysUntilRed}일`
                   remainingClass = "text-blue-600 font-semibold"
                 } else if (daysUntilBlue !== null) {
-                  remainingLabel = `경고까지 -${daysUntilBlue}일 / 위험까지 -${daysUntilRed}일`
+                  remainingLabel = `경고까지 ${daysUntilBlue}일 / 위험까지 ${daysUntilRed}일`
                   remainingClass = "text-gray-500"
                 }
               }
