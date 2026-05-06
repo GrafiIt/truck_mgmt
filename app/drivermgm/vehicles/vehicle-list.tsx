@@ -246,13 +246,13 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Transporter</th>
               <th
                 className="px-4 py-3 text-left font-semibold whitespace-nowrap"
-                style={{ position: "sticky", left: 0, zIndex: 3, backgroundColor: "#f3f4f6" }}
+                style={{ position: "sticky", left: 0, zIndex: 3, backgroundColor: "#f3f4f6", minWidth: "80px", width: "80px" }}
               >
                 운전원
               </th>
               <th
                 className="px-4 py-3 text-left font-semibold whitespace-nowrap"
-                style={{ position: "sticky", left: 100, zIndex: 3, backgroundColor: "#f3f4f6" }}
+                style={{ position: "sticky", left: 80, zIndex: 3, backgroundColor: "#f3f4f6", minWidth: "130px", width: "130px", boxShadow: "4px 0 6px -2px rgba(0,0,0,0.15)" }}
               >
                 차량번호
               </th>
@@ -331,13 +331,13 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                   <TableCell className="px-4 py-3 whitespace-nowrap">{vehicle.transporter}</TableCell>
                   <TableCell
                     className="px-4 py-3 whitespace-nowrap"
-                    style={{ position: "sticky", left: 0, zIndex: 2, backgroundColor: "#ffffff" }}
+                    style={{ position: "sticky", left: 0, zIndex: 2, backgroundColor: "#ffffff", minWidth: "80px", width: "80px" }}
                   >
                     {vehicle.driver_name}
                   </TableCell>
                   <TableCell
                     className="px-4 py-3 whitespace-nowrap"
-                    style={{ position: "sticky", left: 100, zIndex: 2, backgroundColor: "#ffffff" }}
+                    style={{ position: "sticky", left: 80, zIndex: 2, backgroundColor: "#ffffff", minWidth: "130px", width: "130px", boxShadow: "4px 0 6px -2px rgba(0,0,0,0.15)" }}
                   >
                     <Link
                       href={`/drivermgm/vehicles/${vehicle.vehicle_number}`}
