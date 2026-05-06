@@ -239,13 +239,53 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
           .scrollbar-visible::-webkit-scrollbar-thumb:hover {
             background: #2563eb;
           }
+          .sticky-col-1 {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background-color: #f3f4f6;
+          }
+          .sticky-col-2 {
+            position: sticky;
+            left: 100px;
+            z-index: 2;
+            background-color: #f3f4f6;
+          }
+          .sticky-col-1-body {
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            background-color: #ffffff;
+          }
+          .sticky-col-2-body {
+            position: sticky;
+            left: 100px;
+            z-index: 1;
+            background-color: #ffffff;
+          }
+          .dark .sticky-col-1,
+          .dark .sticky-col-2 {
+            background-color: #1f2937;
+          }
+          .dark .sticky-col-1-body,
+          .dark .sticky-col-2-body {
+            background-color: #111827;
+          }
+          tr:hover .sticky-col-1-body,
+          tr:hover .sticky-col-2-body {
+            background-color: #f9fafb;
+          }
+          .dark tr:hover .sticky-col-1-body,
+          .dark tr:hover .sticky-col-2-body {
+            background-color: #1f2937;
+          }
         `}</style>
         <Table className="w-full text-sm">
           <TableHeader>
             <tr className="bg-gray-100 dark:bg-gray-800">
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Transporter</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">운전원</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">차량번호</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap sticky-col-1">운전원</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap sticky-col-2">차량번호</th>
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">제조사</th>
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">차량 종류</th>
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">차량출고일</th>
@@ -319,8 +359,8 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
               return (
                 <TableRow key={vehicle.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                   <TableCell className="px-4 py-3 whitespace-nowrap">{vehicle.transporter}</TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">{vehicle.driver_name}</TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  <TableCell className="px-4 py-3 whitespace-nowrap sticky-col-1-body">{vehicle.driver_name}</TableCell>
+                  <TableCell className="px-4 py-3 whitespace-nowrap sticky-col-2-body">
                     <Link
                       href={`/drivermgm/vehicles/${vehicle.vehicle_number}`}
                       className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
