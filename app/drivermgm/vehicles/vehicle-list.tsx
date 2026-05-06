@@ -244,8 +244,18 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
           <TableHeader>
             <tr className="bg-gray-100 dark:bg-gray-800">
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Transporter</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">운전원</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">차량번호</th>
+              <th
+                className="px-4 py-3 text-left font-semibold whitespace-nowrap"
+                style={{ position: "sticky", left: 0, zIndex: 3, backgroundColor: "#f3f4f6", minWidth: "80px", width: "80px" }}
+              >
+                운전원
+              </th>
+              <th
+                className="px-4 py-3 text-left font-semibold whitespace-nowrap"
+                style={{ position: "sticky", left: 80, zIndex: 3, backgroundColor: "#f3f4f6", minWidth: "130px", width: "130px", boxShadow: "4px 0 6px -2px rgba(0,0,0,0.15)" }}
+              >
+                차량번호
+              </th>
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">제조사</th>
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">차량 종류</th>
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">차량출고일</th>
@@ -319,8 +329,16 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
               return (
                 <TableRow key={vehicle.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                   <TableCell className="px-4 py-3 whitespace-nowrap">{vehicle.transporter}</TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">{vehicle.driver_name}</TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  <TableCell
+                    className="px-4 py-3 whitespace-nowrap"
+                    style={{ position: "sticky", left: 0, zIndex: 2, backgroundColor: "#ffffff", minWidth: "80px", width: "80px" }}
+                  >
+                    {vehicle.driver_name}
+                  </TableCell>
+                  <TableCell
+                    className="px-4 py-3 whitespace-nowrap"
+                    style={{ position: "sticky", left: 80, zIndex: 2, backgroundColor: "#ffffff", minWidth: "130px", width: "130px", boxShadow: "4px 0 6px -2px rgba(0,0,0,0.15)" }}
+                  >
                     <Link
                       href={`/drivermgm/vehicles/${vehicle.vehicle_number}`}
                       className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
