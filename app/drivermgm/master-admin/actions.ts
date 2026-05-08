@@ -1,23 +1,38 @@
 "use server"
 
 import { createAdminClient } from "@/lib/supabase/server"
+import { Pool } from "pg"
+
+// 데이터베이스 연결 풀 생성
+const pool = new Pool({
+  connectionString: process.env.POSTGRES_URL,
+})
 
 // hunwoo 스키마의 hun_main_pass_manager 테이블에서 마스터 관리자 정보 조회
-// hunwoo 스키마는 Supabase API에 노출되지 않으므로 직접 SQL 쿼리 사용
 async function getMasterAdminCredentials() {
-  const supabase = await createAdminClient()
-  const { data, error } = await supabase.rpc("query_sql", {
-    query_text: `SELECT login_id, login_ps FROM hunwoo.hun_main_pass_manager WHERE project_num = 1002 LIMIT 1`
-  })
+  try {
+    const client = await pool.connect()
+    try {
+      const result = await client.query(
+        "SELECT login_id, login_ps FROM hunwoo.hun_main_pass_manager WHERE project_num = $1 LIMIT 1",
+        [1002]
+      )
 
-  if (error || !data || data.length === 0) {
+      if (result.rows.length === 0) {
+        console.error("마스터 관리자 정보 조회 실패: 데이터 없음")
+        return null
+      }
+
+      return {
+        username: result.rows[0].login_id,
+        password: result.rows[0].login_ps,
+      }
+    } finally {
+      client.release()
+    }
+  } catch (error) {
     console.error("마스터 관리자 정보 조회 실패:", error)
     return null
-  }
-
-  return {
-    username: data[0].login_id,
-    password: data[0].login_ps,
   }
 }
 
@@ -36,19 +51,18 @@ export async function masterAdminLogin(username: string, password: string) {
 
 export async function changeMasterPassword(newPassword: string) {
   try {
-    const supabase = await createAdminClient()
-    
-    const { error } = await supabase.rpc("exec_sql", {
-      sql_query: `UPDATE hunwoo.hun_main_pass_manager SET login_ps = '${newPassword}' WHERE project_num = 1002`
-    })
-
-    if (error) {
-      console.error("비밀번호 변경 실패:", error)
-      return { success: false, error: "비밀번호 변경 중 오류가 발생했습니다." }
+    const client = await pool.connect()
+    try {
+      await client.query(
+        "UPDATE hunwoo.hun_main_pass_manager SET login_ps = $1 WHERE project_num = $2",
+        [newPassword, 1002]
+      )
+      return { success: true }
+    } finally {
+      client.release()
     }
-    
-    return { success: true }
   } catch (err) {
+    console.error("비밀번호 변경 실패:", err)
     return { success: false, error: "비밀번호 변경 중 오류가 발생했습니다." }
   }
 }
