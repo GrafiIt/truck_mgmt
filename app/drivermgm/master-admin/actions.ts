@@ -1,25 +1,23 @@
 "use server"
 
 import { createAdminClient } from "@/lib/supabase/server"
-import { createClient } from "@/lib/supabase/server"
 
 // hunwoo 스키마의 hun_main_pass_manager 테이블에서 마스터 관리자 정보 조회
+// hunwoo 스키마는 Supabase API에 노출되지 않으므로 직접 SQL 쿼리 사용
 async function getMasterAdminCredentials() {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from("hun_main_pass_manager")
-    .select("login_id, login_ps")
-    .eq("project_num", 1002)
-    .single()
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase.rpc("query_sql", {
+    query_text: `SELECT login_id, login_ps FROM hunwoo.hun_main_pass_manager WHERE project_num = 1002 LIMIT 1`
+  })
 
-  if (error || !data) {
+  if (error || !data || data.length === 0) {
     console.error("마스터 관리자 정보 조회 실패:", error)
     return null
   }
 
   return {
-    username: data.login_id,
-    password: data.login_ps,
+    username: data[0].login_id,
+    password: data[0].login_ps,
   }
 }
 
@@ -38,12 +36,11 @@ export async function masterAdminLogin(username: string, password: string) {
 
 export async function changeMasterPassword(newPassword: string) {
   try {
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
     
-    const { error } = await supabase
-      .from("hun_main_pass_manager")
-      .update({ login_ps: newPassword })
-      .eq("project_num", 1002)
+    const { error } = await supabase.rpc("exec_sql", {
+      sql_query: `UPDATE hunwoo.hun_main_pass_manager SET login_ps = '${newPassword}' WHERE project_num = 1002`
+    })
 
     if (error) {
       console.error("비밀번호 변경 실패:", error)
