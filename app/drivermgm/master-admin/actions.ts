@@ -9,7 +9,7 @@ async function getMasterAdminCredentials() {
   const { data, error } = await supabase
     .from("hun_main_pass_manager")
     .select("login_id, login_ps")
-    .eq("project_num", "1002")
+    .eq("project_num", 1002)
     .single()
 
   if (error || !data) {
@@ -43,7 +43,7 @@ export async function changeMasterPassword(newPassword: string) {
     const { error } = await supabase
       .from("hun_main_pass_manager")
       .update({ login_ps: newPassword })
-      .eq("project_num", "1002")
+      .eq("project_num", 1002)
 
     if (error) {
       console.error("비밀번호 변경 실패:", error)
