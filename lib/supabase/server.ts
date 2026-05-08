@@ -47,7 +47,7 @@ export async function createClient() {
       },
     },
     db: {
-      schema: "hun_main_pass_manager",
+      schema: "hunwoo",
     },
   })
 }

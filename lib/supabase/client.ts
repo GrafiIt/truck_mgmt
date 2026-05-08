@@ -22,7 +22,7 @@ export function createClient() {
 
   return createBrowserClient(supabaseUrl, supabaseAnonKey, {
     db: {
-      schema: "hun_main_pass_manager",
+      schema: "hunwoo",
     },
   })
 }
