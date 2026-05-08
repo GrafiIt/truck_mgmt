@@ -1,14 +1,36 @@
 "use server"
 
 import { createAdminClient } from "@/lib/supabase/server"
-import { readFile, writeFile } from "fs/promises"
-import { join } from "path"
+import { createClient } from "@/lib/supabase/server"
 
-const MASTER_ADMIN_USERNAME = "tezmenia"
-let MASTER_ADMIN_PASSWORD = "hun0316" // 기본 비밀번호
+// hunwoo 스키마의 hun_main_pass_manager 테이블에서 마스터 관리자 정보 조회
+async function getMasterAdminCredentials() {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("hun_main_pass_manager")
+    .select("login_id, login_ps")
+    .eq("project_num", "1002")
+    .single()
+
+  if (error || !data) {
+    console.error("마스터 관리자 정보 조회 실패:", error)
+    return null
+  }
+
+  return {
+    username: data.login_id,
+    password: data.login_ps,
+  }
+}
 
 export async function masterAdminLogin(username: string, password: string) {
-  if (username === MASTER_ADMIN_USERNAME && password === MASTER_ADMIN_PASSWORD) {
+  const credentials = await getMasterAdminCredentials()
+  
+  if (!credentials) {
+    return { success: false, error: "관리자 정보를 불러올 수 없습니다." }
+  }
+
+  if (username === credentials.username && password === credentials.password) {
     return { success: true }
   }
   return { success: false, error: "관리자 아이디 또는 비밀번호가 올바르지 않습니다." }
@@ -16,12 +38,17 @@ export async function masterAdminLogin(username: string, password: string) {
 
 export async function changeMasterPassword(newPassword: string) {
   try {
-    // 메모리의 비밀번호 업데이트
-    MASTER_ADMIN_PASSWORD = newPassword
+    const supabase = await createClient()
     
-    // 실제 프로덕션 환경에서는 데이터베이스나 환경변수에 저장해야 합니다
-    // 여기서는 간단히 파일에 저장하는 방식을 사용합니다
-    // 주의: 실제 운영환경에서는 비밀번호를 해시화해서 저장해야 합니다
+    const { error } = await supabase
+      .from("hun_main_pass_manager")
+      .update({ login_ps: newPassword })
+      .eq("project_num", "1002")
+
+    if (error) {
+      console.error("비밀번호 변경 실패:", error)
+      return { success: false, error: "비밀번호 변경 중 오류가 발생했습니다." }
+    }
     
     return { success: true }
   } catch (err) {
@@ -177,8 +204,14 @@ export async function changeCompanyAdminPassword(companyCode: string, newPasswor
 }
 
 export async function deleteCompany(companyCode: string, confirmUsername: string, confirmPassword: string) {
-  // 관리자 인증 확인
-  if (confirmUsername !== MASTER_ADMIN_USERNAME || confirmPassword !== MASTER_ADMIN_PASSWORD) {
+  // 관리자 인증 확인 - DB에서 조회
+  const credentials = await getMasterAdminCredentials()
+  
+  if (!credentials) {
+    return { success: false, error: "관리자 정보를 불러올 수 없습니다." }
+  }
+  
+  if (confirmUsername !== credentials.username || confirmPassword !== credentials.password) {
     return { success: false, error: "관리자 인증에 실패했습니다." }
   }
 
