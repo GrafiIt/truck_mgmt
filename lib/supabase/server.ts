@@ -61,8 +61,5 @@ export async function createAdminClient() {
       autoRefreshToken: false,
       persistSession: false,
     },
-    db: {
-      schema: "hunwoo",
-    },
   })
 }

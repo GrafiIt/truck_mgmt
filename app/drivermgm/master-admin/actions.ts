@@ -6,47 +6,28 @@ async function getMasterAdminCredentials() {
   try {
     const supabase = await createAdminClient()
     const { data, error } = await supabase
+      .schema("hunwoo")
       .from("hun_main_pass_manager")
       .select("login_id, login_ps")
       .eq("project_num", 1002)
       .single()
 
-    console.log("[v0] getMasterAdminCredentials - data:", data)
-    console.log("[v0] getMasterAdminCredentials - error:", error)
-
     if (error || !data) {
-      console.log("[v0] getMasterAdminCredentials - returning null due to error or no data")
       return null
     }
 
-    console.log("[v0] getMasterAdminCredentials - returning credentials:", { username: data.login_id, password: data.login_ps })
     return { username: data.login_id, password: data.login_ps }
   } catch (e) {
-    console.log("[v0] getMasterAdminCredentials - catch error:", e)
     return null
   }
 }
 
 export async function masterAdminLogin(username: string, password: string) {
-  console.log("[v0] masterAdminLogin - input username:", username)
-  console.log("[v0] masterAdminLogin - input password:", password)
-  
   const credentials = await getMasterAdminCredentials()
-  
-  console.log("[v0] masterAdminLogin - credentials from DB:", credentials)
   
   if (!credentials) {
     return { success: false, error: "관리자 인증 정보를 불러올 수 없습니다." }
   }
-
-  console.log("[v0] masterAdminLogin - comparing:", {
-    inputUsername: username,
-    dbUsername: credentials.username,
-    usernameMatch: username === credentials.username,
-    inputPassword: password,
-    dbPassword: credentials.password,
-    passwordMatch: password === credentials.password
-  })
 
   if (username === credentials.username && password === credentials.password) {
     return { success: true }
@@ -59,6 +40,7 @@ export async function changeMasterPassword(newPassword: string) {
     const supabase = await createAdminClient()
     
     const { error } = await supabase
+      .schema("hunwoo")
       .from("hun_main_pass_manager")
       .update({ login_ps: newPassword })
       .eq("project_num", 1002)
