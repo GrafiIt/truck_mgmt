@@ -6,7 +6,6 @@ async function getMasterAdminCredentials() {
   try {
     const supabase = await createAdminClient()
     const { data, error } = await supabase
-      .schema("hunwoo")
       .from("hun_main_pass_manager")
       .select("login_id, login_ps")
       .eq("project_num", 1002)
@@ -60,7 +59,6 @@ export async function changeMasterPassword(newPassword: string) {
     const supabase = await createAdminClient()
     
     const { error } = await supabase
-      .schema("hunwoo")
       .from("hun_main_pass_manager")
       .update({ login_ps: newPassword })
       .eq("project_num", 1002)
