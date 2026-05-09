@@ -46,6 +46,9 @@ export async function createClient() {
         }
       },
     },
+    db: {
+      schema: "hunwoo",
+    },
   })
 }
 
