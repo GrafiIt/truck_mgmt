@@ -216,15 +216,17 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
       </div>
 
       <div
-        className="overflow-x-auto scrollbar-visible"
+        className="overflow-x-auto overflow-y-auto scrollbar-visible"
         style={{
           scrollbarWidth: "auto",
           scrollbarColor: "#3b82f6 #e5e7eb",
+          maxHeight: "calc(100vh - 220px)",
         }}
       >
         <style jsx>{`
           .scrollbar-visible::-webkit-scrollbar {
             height: 12px;
+            width: 8px;
             display: block;
           }
           .scrollbar-visible::-webkit-scrollbar-track {
@@ -242,46 +244,46 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
         `}</style>
         <Table className="w-full text-sm">
           <TableHeader>
-            <tr className="bg-gray-100 dark:bg-gray-800">
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Transporter</th>
+            <tr className="bg-gray-100 dark:bg-gray-800" style={{ position: "sticky", top: 0, zIndex: 10 }}>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">Transporter</th>
               <th
-                className="px-4 py-3 text-left font-semibold whitespace-nowrap"
-                style={{ position: "sticky", left: 0, zIndex: 3, backgroundColor: "#f3f4f6", minWidth: "80px", width: "80px" }}
+                className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800"
+                style={{ position: "sticky", left: 0, zIndex: 13, minWidth: "80px", width: "80px" }}
               >
                 운전원
               </th>
               <th
-                className="px-4 py-3 text-left font-semibold whitespace-nowrap"
-                style={{ position: "sticky", left: 80, zIndex: 3, backgroundColor: "#f3f4f6", minWidth: "130px", width: "130px", boxShadow: "4px 0 6px -2px rgba(0,0,0,0.15)" }}
+                className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800"
+                style={{ position: "sticky", left: 80, zIndex: 13, minWidth: "130px", width: "130px", boxShadow: "4px 0 6px -2px rgba(0,0,0,0.15)" }}
               >
                 차량번호
               </th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">제조사</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">차량 종류</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">차량출고일</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">차량연식</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">총주행거리</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">전월주행거리</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">정기검사(최근)</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">정기검사결과</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">구리스</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">엔진오일</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">미션오일</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">경유필터</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">데후오일</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">파워오일</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">에어드라이어</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">드라이필터</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">수분분리기</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">라이닝</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">타이어</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">배터리</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">에어탱크</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">축베어링</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">PTO조인트</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">PTO펌프</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">히터</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">기타</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">제조사</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">차량 종류</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">차량출고일</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">차량연식</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">총주행거리</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">전월주행거리</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">정기검사(최근)</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">정기검사결과</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">구리스</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">엔진오일</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">미션오일</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">경유필터</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">데후오일</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">파워오일</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">에어드라이어</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">드라이필터</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">수분분리기</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">라이닝</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">타이어</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">배터리</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">에어탱크</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">축베어링</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">PTO조인트</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">PTO펌프</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">히터</th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">기타</th>
             </tr>
           </TableHeader>
           <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
