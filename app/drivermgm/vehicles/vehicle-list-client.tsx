@@ -76,5 +76,5 @@ export default function VehicleListClient({ companyCodeFromUrl }: { companyCodeF
     )
   }
 
-  return <VehicleList vehicles={vehicles} thresholds={thresholds} />
+  return <div className="h-full"><VehicleList vehicles={vehicles} thresholds={thresholds} /></div>
 }

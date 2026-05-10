@@ -10,9 +10,9 @@ function VehiclesContent() {
   const companyCodeFromUrl = searchParams.get("cc") || undefined
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
       <VehicleHeader />
-      <main className="container mx-auto px-4 py-6">
+      <main className="flex-1 overflow-hidden container mx-auto px-4 py-6">
         <VehicleListClient companyCodeFromUrl={companyCodeFromUrl} />
       </main>
     </div>

@@ -180,7 +180,7 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
   }, [filteredVehicles])
 
   return (
-    <Card className="p-6">
+    <Card className="p-6 flex flex-col h-full">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">차량 목록</h2>
@@ -216,11 +216,10 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
       </div>
 
       <div
-        className="overflow-x-auto overflow-y-auto scrollbar-visible"
+        className="overflow-x-auto overflow-y-auto scrollbar-visible flex-1 min-h-0"
         style={{
           scrollbarWidth: "auto",
           scrollbarColor: "#3b82f6 #e5e7eb",
-          maxHeight: "calc(100vh - 220px)",
         }}
       >
         <style jsx>{`
