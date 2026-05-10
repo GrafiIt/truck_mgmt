@@ -1,27 +1,48 @@
 "use server"
 
 import { createAdminClient } from "@/lib/supabase/server"
-import { readFile, writeFile } from "fs/promises"
-import { join } from "path"
-
-const MASTER_ADMIN_USERNAME = "tezmenia"
-let MASTER_ADMIN_PASSWORD = "hun0316" // 기본 비밀번호
 
 export async function masterAdminLogin(username: string, password: string) {
-  if (username === MASTER_ADMIN_USERNAME && password === MASTER_ADMIN_PASSWORD) {
-    return { success: true }
+  try {
+    const supabase = await createAdminClient()
+    
+    // hun_main_pass_manager 테이블에서 project_num = 1002인 행의 login_id와 login_ps 조회
+    const { data, error } = await supabase
+      .schema("hunwoo")
+      .from("hun_main_pass_manager")
+      .select("login_id, login_ps")
+      .eq("project_num", 1002)
+      .single()
+
+    if (error || !data) {
+      return { success: false, error: "관리자 정보를 불러오지 못했습니다." }
+    }
+
+    // 입력된 자격증명과 데이터베이스의 자격증명 비교
+    if (username === data.login_id && password === data.login_ps) {
+      return { success: true }
+    }
+
+    return { success: false, error: "관리자 아이디 또는 비밀번호가 올바르지 않습니다." }
+  } catch (err) {
+    return { success: false, error: "로그인 중 오류가 발생했습니다." }
   }
-  return { success: false, error: "관리자 아이디 또는 비밀번호가 올바르지 않습니다." }
 }
 
 export async function changeMasterPassword(newPassword: string) {
   try {
-    // 메모리의 비밀번호 업데이트
-    MASTER_ADMIN_PASSWORD = newPassword
+    const supabase = await createAdminClient()
     
-    // 실제 프로덕션 환경에서는 데이터베이스나 환경변수에 저장해야 합니다
-    // 여기서는 간단히 파일에 저장하는 방식을 사용합니다
-    // 주의: 실제 운영환경에서는 비밀번호를 해시화해서 저장해야 합니다
+    // hun_main_pass_manager 테이블에서 project_num = 1002인 행의 login_ps 업데이트
+    const { error } = await supabase
+      .schema("hunwoo")
+      .from("hun_main_pass_manager")
+      .update({ login_ps: newPassword })
+      .eq("project_num", 1002)
+
+    if (error) {
+      return { success: false, error: "비밀번호 변경에 실패했습니다." }
+    }
     
     return { success: true }
   } catch (err) {
@@ -178,12 +199,25 @@ export async function changeCompanyAdminPassword(companyCode: string, newPasswor
 
 export async function deleteCompany(companyCode: string, confirmUsername: string, confirmPassword: string) {
   // 관리자 인증 확인
-  if (confirmUsername !== MASTER_ADMIN_USERNAME || confirmPassword !== MASTER_ADMIN_PASSWORD) {
-    return { success: false, error: "관리자 인증에 실패했습니다." }
-  }
-
   try {
     const supabase = await createAdminClient()
+    
+    // hun_main_pass_manager 테이블에서 project_num = 1002인 행의 login_id와 login_ps 조회
+    const { data: authData, error: authError } = await supabase
+      .schema("hunwoo")
+      .from("hun_main_pass_manager")
+      .select("login_id, login_ps")
+      .eq("project_num", 1002)
+      .single()
+
+    if (authError || !authData) {
+      return { success: false, error: "관리자 정보를 불러오지 못했습니다." }
+    }
+
+    // 입력된 자격증명과 데이터베이스의 자격증명 비교
+    if (confirmUsername !== authData.login_id || confirmPassword !== authData.login_ps) {
+      return { success: false, error: "관리자 인증에 실패했습니다." }
+    }
 
     // 1. 기업별 테이블 삭제
     const deleteTablesQuery = `
