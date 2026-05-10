@@ -4,6 +4,8 @@ import VehicleHeader from "../../vehicle-header"
 import NotificationThresholdForm from "./notification-threshold-form"
 import { getNotificationThresholdByType } from "../actions"
 
+export const dynamic = "force-dynamic"
+
 export default async function NotificationThresholdEditPage({
   params,
 }: {
