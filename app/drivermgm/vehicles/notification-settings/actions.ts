@@ -69,7 +69,7 @@ export async function getNotificationThresholdByType(vehicleType: string) {
   }
 }
 
-export async function updateNotificationThreshold(vehicleType: string, thresholds: Record<string, number>) {
+export async function updateNotificationThreshold(vehicleType: string, thresholds: Record<string, number | string[]>) {
   try {
     const supabase = await createClient()
 
