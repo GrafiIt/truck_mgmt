@@ -29,6 +29,8 @@ export interface NotificationThreshold {
   // 정기검사 알림 기준 (일)
   inspection_days_red: number
   inspection_days_blue: number
+  // 경고 비활성화 항목 목록
+  disabled_warnings?: string[]
 }
 
 // Default thresholds (fallback when no vehicle type match)
@@ -82,6 +84,8 @@ export function shouldHighlightWithThreshold(
   threshold: NotificationThreshold
 ): boolean {
   if (!date && !mileage) return false
+  // 경고 비활성화 항목인 경우 색상 표시 안 함
+  if (threshold.disabled_warnings && threshold.disabled_warnings.includes(itemName)) return false
 
   const today = new Date()
   const itemDate = date ? new Date(date) : null
@@ -131,6 +135,8 @@ export function shouldWarnWithThreshold(
   threshold: NotificationThreshold
 ): boolean {
   if (!date && !mileage) return false
+  // 경고 비활성화 항목인 경우 색상 표시 안 함
+  if (threshold.disabled_warnings && threshold.disabled_warnings.includes(itemName)) return false
 
   const today = new Date()
   const itemDate = date ? new Date(date) : null

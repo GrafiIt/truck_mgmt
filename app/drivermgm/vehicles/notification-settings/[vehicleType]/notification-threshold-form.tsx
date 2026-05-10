@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, Save } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -41,6 +42,8 @@ interface NotificationThreshold {
   // 정기검사 알림 기준 (일)
   inspection_days_red: number
   inspection_days_blue: number
+  // 경고 비활성화 항목 목록
+  disabled_warnings?: string[] | null
 }
 
 interface Props {
@@ -51,9 +54,23 @@ interface Props {
 export default function NotificationThresholdForm({ vehicleType, threshold }: Props) {
   const router = useRouter()
   const [formData, setFormData] = useState(threshold)
+  const [disabledWarnings, setDisabledWarnings] = useState<string[]>(
+    Array.isArray(threshold.disabled_warnings) ? threshold.disabled_warnings : []
+  )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
+
+  const MAINTENANCE_ITEM_NAMES = [
+    "구리스", "엔진오일", "미션오일", "경유필터", "데후오일",
+    "타이어", "드라이필터", "수분분리기", "라이닝", "배터리", "에어탱크", "축베어링",
+  ]
+
+  const toggleDisabledWarning = (itemName: string) => {
+    setDisabledWarnings((prev) =>
+      prev.includes(itemName) ? prev.filter((n) => n !== itemName) : [...prev, itemName]
+    )
+  }
 
   const handleChange = (field: keyof NotificationThreshold, value: string) => {
     const numValue = parseInt(value) || 0
@@ -110,12 +127,13 @@ export default function NotificationThresholdForm({ vehicleType, threshold }: Pr
       return
     }
 
-    const updateData: Record<string, number> = {}
+    const updateData: Record<string, number | string[]> = {}
     Object.keys(formData).forEach((key) => {
-      if (key !== "vehicle_type") {
+      if (key !== "vehicle_type" && key !== "disabled_warnings") {
         updateData[key] = formData[key as keyof NotificationThreshold] as number
       }
     })
+    updateData["disabled_warnings"] = disabledWarnings
 
     const result = await updateNotificationThreshold(vehicleType, updateData)
 
@@ -265,26 +283,48 @@ export default function NotificationThresholdForm({ vehicleType, threshold }: Pr
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {maintenanceItems.map((item) => (
-          <div key={item.title} className="border-b pb-6">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">{item.title}</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {item.fields.map((field) => (
-                <div key={field.name} className="space-y-2">
-                  <Label htmlFor={field.name}>{field.label}</Label>
-                  <Input
-                    id={field.name}
-                    type="number"
-                    min="0"
-                    value={formData[field.name as keyof NotificationThreshold]}
-                    onChange={(e) => handleChange(field.name as keyof NotificationThreshold, e.target.value)}
-                    placeholder={field.type === "days" ? "일 수 입력" : "주행거리 입력"}
+        {maintenanceItems.map((item) => {
+          // item.title에서 한글 이름 추출 (e.g. "구리스 (Grease)" → "구리스")
+          const koreanName = item.title.split(" (")[0]
+          const isDisabled = disabledWarnings.includes(koreanName)
+          return (
+            <div key={item.title} className="border-b pb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className={`text-lg font-semibold text-gray-900 dark:text-white ${isDisabled ? "opacity-50" : ""}`}>
+                  {item.title}
+                </h3>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`disable-${koreanName}`}
+                    checked={isDisabled}
+                    onCheckedChange={() => toggleDisabledWarning(koreanName)}
                   />
+                  <Label
+                    htmlFor={`disable-${koreanName}`}
+                    className="text-sm font-normal text-gray-600 dark:text-gray-400 cursor-pointer select-none"
+                  >
+                    경고 받지 않기
+                  </Label>
                 </div>
-              ))}
+              </div>
+              <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isDisabled ? "opacity-40 pointer-events-none" : ""}`}>
+                {item.fields.map((field) => (
+                  <div key={field.name} className="space-y-2">
+                    <Label htmlFor={field.name}>{field.label}</Label>
+                    <Input
+                      id={field.name}
+                      type="number"
+                      min="0"
+                      value={formData[field.name as keyof NotificationThreshold]}
+                      onChange={(e) => handleChange(field.name as keyof NotificationThreshold, e.target.value)}
+                      placeholder={field.type === "days" ? "일 수 입력" : "주행거리 입력"}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
 
         {/* 정기검사 알림 기간 설정 섹션 */}
         <div className="border-t-2 border-amber-300 dark:border-amber-600 pt-6 mt-6">

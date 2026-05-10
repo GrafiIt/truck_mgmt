@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, ChevronRight } from "lucide-react"
+import { ArrowLeft, ArrowDownAZ, ArrowUpAZ, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { getNotificationThresholds, getVehicleTypes } from "./actions"
@@ -43,6 +43,7 @@ export default function NotificationSettingsClient() {
   const [vehicleTypes, setVehicleTypes] = useState<string[]>([])
   const [thresholds, setThresholds] = useState<Record<string, NotificationThreshold>>({})
   const [loading, setLoading] = useState(true)
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
 
   useEffect(() => {
     async function loadData() {
@@ -66,6 +67,10 @@ export default function NotificationSettingsClient() {
     }
     loadData()
   }, [])
+
+  const sortedVehicleTypes = [...vehicleTypes].sort((a, b) =>
+    sortOrder === "asc" ? a.localeCompare(b, "ko") : b.localeCompare(a, "ko")
+  )
 
   const handleVehicleTypeClick = (vehicleType: string) => {
     const threshold = thresholds[vehicleType]
@@ -93,14 +98,32 @@ export default function NotificationSettingsClient() {
             목록으로
           </Button>
         </Link>
-        <div>
+        <div className="flex-1">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">알림 설정</h2>
           <p className="text-sm text-gray-600 dark:text-gray-400">차량 종류별 정비 알림 기준을 설정하세요</p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
+          className="gap-2 shrink-0"
+        >
+          {sortOrder === "asc" ? (
+            <>
+              <ArrowDownAZ className="h-4 w-4" />
+              오름차순
+            </>
+          ) : (
+            <>
+              <ArrowUpAZ className="h-4 w-4" />
+              내림차순
+            </>
+          )}
+        </Button>
       </div>
 
       <div className="space-y-3">
-        {vehicleTypes.map((vehicleType) => (
+        {sortedVehicleTypes.map((vehicleType) => (
           <button
             key={vehicleType}
             onClick={() => handleVehicleTypeClick(vehicleType)}
