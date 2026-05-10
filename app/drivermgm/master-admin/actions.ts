@@ -6,26 +6,83 @@ export async function masterAdminLogin(username: string, password: string) {
   try {
     const supabase = await createAdminClient()
     
-    // hun_main_pass_manager 테이블에서 project_num = 1002인 행의 login_id와 login_ps 조회
-    const { data, error } = await supabase
+    console.log("[v0] Login attempt - Input:", { username, password })
+    
+    // hunwoo 스키마에서 모든 테이블 나열 (디버깅용)
+    const { data: tables, error: tablesError } = await supabase
+      .schema("hunwoo")
+      .from("information_schema.tables")
+      .select("table_name")
+      .eq("table_schema", "hunwoo")
+    
+    console.log("[v0] Available tables in hunwoo schema:", { tables, error: tablesError?.message })
+
+    // 먼저 hunwoo 스키마에서 시도
+    let { data, error } = await supabase
       .schema("hunwoo")
       .from("hun_main_pass_manager")
       .select("login_id, login_ps")
       .eq("project_num", 1002)
       .single()
 
-    if (error || !data) {
-      return { success: false, error: "관리자 정보를 불러오지 못했습니다." }
+    console.log("[v0] hunwoo schema query:", { error: error?.message, data })
+
+    // hunwoo 스키마 실패시 public 스키마 시도
+    if (error) {
+      console.log("[v0] hunwoo schema failed, trying public schema")
+      const result = await supabase
+        .from("hun_main_pass_manager")
+        .select("login_id, login_ps")
+        .eq("project_num", 1002)
+        .single()
+      
+      data = result.data
+      error = result.error
+      console.log("[v0] public schema query:", { error: error?.message, data })
+    }
+
+    if (error) {
+      console.log("[v0] Database error details:", error)
+      // 테이블이 없을 수 있으니 안내 메시지 제공
+      if (error.code === "PGRST116") {
+        return { success: false, error: "hun_main_pass_manager 테이블을 찾을 수 없습니다. 데이터베이스 설정을 확인해주세요." }
+      }
+      return { success: false, error: `데이터베이스 오류: ${error.message}` }
+    }
+
+    if (!data) {
+      console.log("[v0] No data found for project_num 1002")
+      return { success: false, error: "project_num 1002에 해당하는 관리자 정보를 찾을 수 없습니다." }
     }
 
     // 입력된 자격증명과 데이터베이스의 자격증명 비교
-    if (username === data.login_id && password === data.login_ps) {
+    const usernameMatch = username === data.login_id
+    const passwordMatch = password === data.login_ps
+    
+    console.log("[v0] Credentials comparison:", {
+      inputUsername: username,
+      dbUsername: data.login_id,
+      usernameMatch,
+      inputPassword: password,
+      dbPassword: data.login_ps,
+      passwordMatch,
+      usernameLength: { input: username.length, db: data.login_id.length },
+      passwordLength: { input: password.length, db: data.login_ps.length }
+    })
+
+    if (usernameMatch && passwordMatch) {
+      console.log("[v0] Login successful")
       return { success: true }
     }
 
-    return { success: false, error: "관리자 아이디 또는 비밀번호가 올바르지 않습니다." }
+    if (!usernameMatch) {
+      return { success: false, error: `아이디가 일치하지 않습니다. (입력: ${username}, DB: ${data.login_id})` }
+    }
+    
+    return { success: false, error: "비밀번호가 일치하지 않습니다." }
   } catch (err) {
-    return { success: false, error: "로그인 중 오류가 발생했습니다." }
+    console.log("[v0] Exception in masterAdminLogin:", err)
+    return { success: false, error: `로그인 중 오류가 발생했습니다: ${err instanceof Error ? err.message : '알 수 없는 오류'}` }
   }
 }
 
