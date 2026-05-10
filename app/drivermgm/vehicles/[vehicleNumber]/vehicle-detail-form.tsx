@@ -610,6 +610,7 @@ export default function VehicleDetailForm({
                     <SelectItem value="3.5톤">3.5톤</SelectItem>
                     <SelectItem value="2.5톤">2.5톤</SelectItem>
                     <SelectItem value="1.2톤">1.2톤</SelectItem>
+                    <SelectItem value="승용차">승용차</SelectItem>
                     <SelectItem value="1톤">1톤</SelectItem>
                   </SelectContent>
                 </Select>
