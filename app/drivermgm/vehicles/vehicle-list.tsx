@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Plus, Download } from "lucide-react"
 import { useState, useMemo, useCallback } from "react"
 import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableRow, TableHeader } from "@/components/ui/table"
+
 import {
   type NotificationThreshold,
   getThresholdForVehicleType,
@@ -216,11 +216,12 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
       </div>
 
       <div
-        className="overflow-auto scrollbar-visible"
+        className="scrollbar-visible"
         style={{
+          overflow: "auto",
+          maxHeight: "calc(100vh - 280px)",
           scrollbarWidth: "auto",
           scrollbarColor: "#3b82f6 #e5e7eb",
-          maxHeight: "calc(100vh - 280px)",
         }}
       >
         <style jsx>{`
@@ -242,51 +243,46 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
             background: #2563eb;
           }
         `}</style>
-        <Table className="w-full text-sm">
-          <TableHeader className="sticky top-0 z-20">
-            <tr className="bg-gray-100 dark:bg-gray-800">
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">Transporter</th>
-              <th
-                className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800"
-                style={{ position: "sticky", left: 0, zIndex: 30, minWidth: "80px", width: "80px" }}
-              >
+        {/* Table 컴포넌트 대신 <table> 직접 사용 — Table 내부 overflow-x-auto 래퍼가 sticky 컨텍스트를 깨뜨리기 때문 */}
+        <table className="w-full caption-bottom text-sm border-collapse">
+          <thead>
+            <tr className="border-b">
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">Transporter</th>
+              <th style={{ position: "sticky", top: 0, left: 0, zIndex: 50, backgroundColor: "#f3f4f6", minWidth: "80px", width: "80px" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">
                 운전원
               </th>
-              <th
-                className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800"
-                style={{ position: "sticky", left: 80, zIndex: 30, minWidth: "130px", width: "130px", boxShadow: "4px 0 6px -2px rgba(0,0,0,0.15)" }}
-              >
+              <th style={{ position: "sticky", top: 0, left: 80, zIndex: 50, backgroundColor: "#f3f4f6", minWidth: "130px", width: "130px", boxShadow: "4px 0 6px -2px rgba(0,0,0,0.15)" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">
                 차량번호
               </th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">제조사</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">차량 종류</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">차량출고일</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">차량연식</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">총주행거리</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">전월주행거리</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">정기검사(최근)</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">정기검사결과</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">구리스</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">엔진오일</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">미션오일</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">경유필터</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">데후오일</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">파워오일</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">에어드라이어</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">드라이필터</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">수분분리기</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">라이닝</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">타이어</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">배터리</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">에어탱크</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">축베어링</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">PTO조인트</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">PTO펌프</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">히터</th>
-              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap bg-gray-100 dark:bg-gray-800">기타</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">제조사</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">차량 종류</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">차량출고일</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">차량연식</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">총주행거리</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">전월주행거리</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">정기검사(최근)</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">정기검사결과</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">구리스</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">엔진오일</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">미션오일</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">경유필터</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">데후오일</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">파워오일</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">에어드라이어</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">드라이필터</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">수분분리기</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">라이닝</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">타이어</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">배터리</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">에어탱크</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">축베어링</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">PTO조인트</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">PTO펌프</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">히터</th>
+              <th style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#f3f4f6" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap">기타</th>
             </tr>
-          </TableHeader>
-          <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
+          </thead>
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {filteredVehicles.map((vehicle) => {
               const threshold = getThresholdForVehicleType(vehicle.vehicle_type, thresholds)
               const sh = (name: string, date: string | null, mileage: number | null) =>
@@ -329,16 +325,16 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
               }
 
               return (
-                <TableRow key={vehicle.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                  <TableCell className="px-4 py-3 whitespace-nowrap bg-white dark:bg-gray-900">{vehicle.transporter}</TableCell>
-                  <TableCell
-                    className="px-4 py-3 whitespace-nowrap bg-white dark:bg-gray-900"
+                <tr key={vehicle.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">{vehicle.transporter}</td>
+                  <td
+                    className="px-4 py-3 whitespace-nowrap text-sm bg-white dark:bg-gray-900"
                     style={{ position: "sticky", left: 0, zIndex: 10, minWidth: "80px", width: "80px" }}
                   >
                     {vehicle.driver_name}
-                  </TableCell>
-                  <TableCell
-                    className="px-4 py-3 whitespace-nowrap bg-white dark:bg-gray-900"
+                  </td>
+                  <td
+                    className="px-4 py-3 whitespace-nowrap text-sm bg-white dark:bg-gray-900"
                     style={{ position: "sticky", left: 80, zIndex: 10, minWidth: "130px", width: "130px", boxShadow: "4px 0 6px -2px rgba(0,0,0,0.15)" }}
                   >
                     <Link
@@ -347,20 +343,20 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                     >
                       {vehicle.vehicle_number}
                     </Link>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">{vehicle.manufacturer}</TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">{vehicle.vehicle_type || "-"}</TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">{vehicle.release_date}</TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">{vehicle.vehicle_age}</TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">{vehicle.manufacturer}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">{vehicle.vehicle_type || "-"}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">{vehicle.release_date}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">{vehicle.vehicle_age}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     {vehicle.total_mileage?.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     {(vehicle as any).previous_month_mileage && (vehicle as any).previous_month_mileage > 0
                       ? `${((vehicle as any).previous_month_mileage).toLocaleString()}km`
                       : "0"}
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div
                       className={getHighlightClass(
                         sh("정기검사", vehicle.last_inspection_date, null),
@@ -369,8 +365,8 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                     >
                       {vehicle.last_inspection_date || "-"}
                     </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <span
                       className={`px-2 py-1 rounded text-xs font-medium ${
                         vehicle.inspection_result === "Pass"
@@ -380,16 +376,16 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                     >
                       {vehicle.inspection_result}
                     </span>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className="text-xs">
                       <div className={getHighlightClass(highlights.grease, warnings.grease)}>{vehicle.grease_date}</div>
                       <div className={getHighlightClass(highlights.grease, warnings.grease) || "text-gray-500"}>
                         {vehicle.grease_mileage?.toLocaleString()}
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className="text-xs">
                       <div className={getHighlightClass(highlights.engineOil, warnings.engineOil)}>
                         {vehicle.engine_oil_date}
@@ -398,8 +394,8 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                         {vehicle.engine_oil_mileage?.toLocaleString()}
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className="text-xs">
                       <div className={getHighlightClass(highlights.missionOil, warnings.missionOil)}>
                         {vehicle.mission_oil_date}
@@ -408,8 +404,8 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                         {vehicle.mission_oil_mileage?.toLocaleString()}
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className="text-xs">
                       <div className={getHighlightClass(highlights.dieselFilter, warnings.dieselFilter)}>
                         {vehicle.diesel_filter_date}
@@ -420,8 +416,8 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                         {vehicle.diesel_filter_mileage?.toLocaleString()}
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className="text-xs">
                       <div className={getHighlightClass(highlights.defuOil, warnings.defuOil)}>
                         {vehicle.defu_oil_date}
@@ -430,41 +426,41 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                         {vehicle.defu_oil_mileage?.toLocaleString()}
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className="text-xs text-gray-500">{vehicle.power_oil_mileage?.toLocaleString()}</div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className="text-xs">{vehicle.air_dryer_date}</div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div
                       className={`text-xs ${getHighlightClass(highlights.dryFilter, warnings.dryFilter) || "text-gray-500"}`}
                     >
                       {vehicle.dry_filter_mileage?.toLocaleString()}
                     </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div
                       className={`text-xs ${getHighlightClass(highlights.waterSeparator, warnings.waterSeparator) || "text-gray-500"}`}
                     >
                       {vehicle.water_separator_mileage?.toLocaleString()}
                     </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className={`text-xs ${getHighlightClass(highlights.lining, warnings.lining)}`}>
                       {vehicle.lining_date}
                     </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className="text-xs">
                       <div className={getHighlightClass(highlights.tire, warnings.tire)}>{vehicle.tire_date}</div>
                       <div className={getHighlightClass(highlights.tire, warnings.tire) || "text-gray-500"}>
                         {vehicle.tire_mileage?.toLocaleString()}
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className="text-xs">
                       <div className={getHighlightClass(highlights.battery, warnings.battery)}>
                         {vehicle.battery_date}
@@ -473,24 +469,24 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                         {vehicle.battery_mileage?.toLocaleString()}
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className={`text-xs ${getHighlightClass(highlights.airTank, warnings.airTank)}`}>
                       {vehicle.air_tank_date}
                     </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className={`text-xs ${getHighlightClass(highlights.axleBearing, warnings.axleBearing)}`}>
                       {vehicle.axle_bearing_date}
                     </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className="text-xs">{vehicle.pto_joint_date}</div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className="text-xs">{vehicle.pto_pump_date}</div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className="text-xs">
                       <span
                         className={
@@ -504,8 +500,8 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                         {vehicle.heater_date || "-"}
                       </span>
                     </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className="text-xs">
                       <span
                         className={
@@ -519,12 +515,12 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                         {vehicle.others_summary || "-"}
                       </span>
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               )
             })}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       {filteredVehicles.length === 0 && (
