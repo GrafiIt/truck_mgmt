@@ -256,17 +256,17 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
               >
                 차량 정보
               </th>
-              {/* 주요 정비 항목 (연한 붉은색) — 구리스~축베어링 12칸 */}
+              {/* 주요 정비 항목 (연한 붉은색) — 구리스~배터리 9칸 */}
               <th
-                colSpan={12}
+                colSpan={9}
                 style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#fee2e2" }}
                 className="px-4 py-2 text-center font-bold whitespace-nowrap text-red-800 border border-red-300"
               >
                 주요 정비 항목
               </th>
-              {/* 일반 정비 항목 (연한 노란색) — 파워오일~기타 5칸 */}
+              {/* 일반 정비 항목 (연한 노란색) — 수분분리기~기타 8칸 */}
               <th
-                colSpan={5}
+                colSpan={8}
                 style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#fef9c3" }}
                 className="px-4 py-2 text-center font-bold whitespace-nowrap text-yellow-800 border border-yellow-300"
               >
@@ -298,13 +298,13 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
               <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#fff1f2" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-red-200">경유필터</th>
               <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#fff1f2" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-red-200">데후오일</th>
               <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#fff1f2" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-red-200">드라이필터</th>
-              <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#fff1f2" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-red-200">수분분리기</th>
               <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#fff1f2" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-red-200">라이닝</th>
               <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#fff1f2" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-red-200">타이어</th>
               <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#fff1f2" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-red-200">배터리</th>
-              <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#fff1f2" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-red-200">에어탱크</th>
-              <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#fff1f2" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-red-200">축베어링</th>
               {/* 일반 정비 항목 컬럼들 */}
+              <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#fefce8" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-yellow-200">수분분리기</th>
+              <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#fefce8" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-yellow-200">에어탱크</th>
+              <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#fefce8" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-yellow-200">축베어링</th>
               <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#fefce8" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-yellow-200">파워오일</th>
               <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#fefce8" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-yellow-200">에어드라이어</th>
               <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#fefce8" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-yellow-200">PTO조인트</th>
@@ -466,14 +466,6 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                       {vehicle.dry_filter_mileage?.toLocaleString()}
                     </div>
                   </td>
-                  {/* 수분분리기 — 주요 정비 항목 */}
-                  <td className="px-4 py-3 whitespace-nowrap text-sm">
-                    <div
-                      className={`text-xs ${getHighlightClass(highlights.waterSeparator, warnings.waterSeparator) || "text-gray-500"}`}
-                    >
-                      {vehicle.water_separator_mileage?.toLocaleString()}
-                    </div>
-                  </td>
                   {/* 라이닝 — 주요 정비 항목 */}
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className={`text-xs ${getHighlightClass(highlights.lining, warnings.lining)}`}>
@@ -500,13 +492,21 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                       </div>
                     </div>
                   </td>
-                  {/* 에어탱크 — 주요 정비 항목 */}
+                  {/* 수분분리기 — 일반 정비 항목 */}
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
+                    <div
+                      className={`text-xs ${getHighlightClass(highlights.waterSeparator, warnings.waterSeparator) || "text-gray-500"}`}
+                    >
+                      {vehicle.water_separator_mileage?.toLocaleString()}
+                    </div>
+                  </td>
+                  {/* 에어탱크 — 일반 정비 항목 */}
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className={`text-xs ${getHighlightClass(highlights.airTank, warnings.airTank)}`}>
                       {vehicle.air_tank_date}
                     </div>
                   </td>
-                  {/* 축베어링 — 주요 정비 항목 */}
+                  {/* 축베어링 — 일반 정비 항목 */}
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className={`text-xs ${getHighlightClass(highlights.axleBearing, warnings.axleBearing)}`}>
                       {vehicle.axle_bearing_date}
