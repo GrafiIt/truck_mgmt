@@ -327,12 +327,15 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                 dieselFilter: sh("경유필터", vehicle.diesel_filter_date, vehicle.diesel_filter_mileage),
                 defuOil: sh("데후오일", vehicle.defu_oil_date, vehicle.defu_oil_mileage),
                 tire: sh("타이어", vehicle.tire_date, vehicle.tire_mileage),
-                dryFilter: sh("드라이필터", vehicle.air_dryer_date, vehicle.dry_filter_mileage),
+                dryFilter: sh("드라이필터", vehicle.dry_filter_date, vehicle.dry_filter_mileage),
                 waterSeparator: sh("수분분리기", vehicle.water_separator_date, vehicle.water_separator_mileage),
                 lining: sh("라이닝", vehicle.lining_date, vehicle.lining_mileage),
                 battery: sh("배터리", vehicle.battery_date, vehicle.battery_mileage),
                 airTank: sh("에어탱크", vehicle.air_tank_date, vehicle.air_tank_mileage),
                 axleBearing: sh("축베어링", vehicle.axle_bearing_date, vehicle.axle_bearing_mileage),
+                powerOil: sh("파워오일", vehicle.power_oil_date, vehicle.power_oil_mileage),
+                airDryer: sh("에어드라이어", vehicle.air_dryer_date, vehicle.air_dryer_mileage),
+                ptoJoint: sh("PTO조인트", vehicle.pto_joint_date, vehicle.pto_joint_mileage),
                 heater: sh("히터", vehicle.heater_date, vehicle.heater_mileage),
                 others: sh("기타", vehicle.others_date, vehicle.others_mileage),
               }
@@ -344,12 +347,15 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                 dieselFilter: sw("경유필터", vehicle.diesel_filter_date, vehicle.diesel_filter_mileage),
                 defuOil: sw("데후오일", vehicle.defu_oil_date, vehicle.defu_oil_mileage),
                 tire: sw("타이어", vehicle.tire_date, vehicle.tire_mileage),
-                dryFilter: sw("드라이필터", vehicle.air_dryer_date, vehicle.dry_filter_mileage),
+                dryFilter: sw("드라이필터", vehicle.dry_filter_date, vehicle.dry_filter_mileage),
                 waterSeparator: sw("수분분리기", vehicle.water_separator_date, vehicle.water_separator_mileage),
                 lining: sw("라이닝", vehicle.lining_date, vehicle.lining_mileage),
                 battery: sw("배터리", vehicle.battery_date, vehicle.battery_mileage),
                 airTank: sw("에어탱크", vehicle.air_tank_date, vehicle.air_tank_mileage),
                 axleBearing: sw("축베어링", vehicle.axle_bearing_date, vehicle.axle_bearing_mileage),
+                powerOil: sw("파워오일", vehicle.power_oil_date, vehicle.power_oil_mileage),
+                airDryer: sw("에어드라이어", vehicle.air_dryer_date, vehicle.air_dryer_mileage),
+                ptoJoint: sw("PTO조인트", vehicle.pto_joint_date, vehicle.pto_joint_mileage),
                 heater: sw("히터", vehicle.heater_date, vehicle.heater_mileage),
                 others: sw("기타", vehicle.others_date, vehicle.others_mileage),
               }
@@ -460,16 +466,24 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                   </td>
                   {/* 드라이필터 — 주요 정비 항목 */}
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
-                    <div
-                      className={`text-xs ${getHighlightClass(highlights.dryFilter, warnings.dryFilter) || "text-gray-500"}`}
-                    >
-                      {vehicle.dry_filter_mileage?.toLocaleString()}
+                    <div className="text-xs">
+                      <div className={getHighlightClass(highlights.dryFilter, warnings.dryFilter)}>
+                        {vehicle.dry_filter_date}
+                      </div>
+                      <div className={getHighlightClass(highlights.dryFilter, warnings.dryFilter) || "text-gray-500"}>
+                        {vehicle.dry_filter_mileage?.toLocaleString()}
+                      </div>
                     </div>
                   </td>
                   {/* 라이닝 — 주요 정비 항목 */}
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
-                    <div className={`text-xs ${getHighlightClass(highlights.lining, warnings.lining)}`}>
-                      {vehicle.lining_date}
+                    <div className="text-xs">
+                      <div className={getHighlightClass(highlights.lining, warnings.lining)}>
+                        {vehicle.lining_date}
+                      </div>
+                      <div className={getHighlightClass(highlights.lining, warnings.lining) || "text-gray-500"}>
+                        {vehicle.lining_mileage?.toLocaleString()}
+                      </div>
                     </div>
                   </td>
                   {/* 타이어 — 주요 정비 항목 */}
@@ -494,50 +508,79 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
                   </td>
                   {/* 수분분리기 — 일반 정비 항목 */}
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
-                    <div
-                      className={`text-xs ${getHighlightClass(highlights.waterSeparator, warnings.waterSeparator) || "text-gray-500"}`}
-                    >
-                      {vehicle.water_separator_mileage?.toLocaleString()}
+                    <div className="text-xs">
+                      <div className={getHighlightClass(highlights.waterSeparator, warnings.waterSeparator)}>
+                        {vehicle.water_separator_date}
+                      </div>
+                      <div className={getHighlightClass(highlights.waterSeparator, warnings.waterSeparator) || "text-gray-500"}>
+                        {vehicle.water_separator_mileage?.toLocaleString()}
+                      </div>
                     </div>
                   </td>
                   {/* 에어탱크 — 일반 정비 항목 */}
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
-                    <div className={`text-xs ${getHighlightClass(highlights.airTank, warnings.airTank)}`}>
-                      {vehicle.air_tank_date}
+                    <div className="text-xs">
+                      <div className={getHighlightClass(highlights.airTank, warnings.airTank)}>
+                        {vehicle.air_tank_date}
+                      </div>
+                      <div className={getHighlightClass(highlights.airTank, warnings.airTank) || "text-gray-500"}>
+                        {vehicle.air_tank_mileage?.toLocaleString()}
+                      </div>
                     </div>
                   </td>
                   {/* 축베어링 — 일반 정비 항목 */}
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
-                    <div className={`text-xs ${getHighlightClass(highlights.axleBearing, warnings.axleBearing)}`}>
-                      {vehicle.axle_bearing_date}
+                    <div className="text-xs">
+                      <div className={getHighlightClass(highlights.axleBearing, warnings.axleBearing)}>
+                        {vehicle.axle_bearing_date}
+                      </div>
+                      <div className={getHighlightClass(highlights.axleBearing, warnings.axleBearing) || "text-gray-500"}>
+                        {vehicle.axle_bearing_mileage?.toLocaleString()}
+                      </div>
                     </div>
                   </td>
                   {/* 파워오일 — 일반 정비 항목 */}
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
-                    <div className="text-xs text-gray-500">{vehicle.power_oil_mileage?.toLocaleString()}</div>
+                    <div className="text-xs">
+                      <div className={getHighlightClass(highlights.powerOil, warnings.powerOil)}>
+                        {vehicle.power_oil_date}
+                      </div>
+                      <div className={getHighlightClass(highlights.powerOil, warnings.powerOil) || "text-gray-500"}>
+                        {vehicle.power_oil_mileage?.toLocaleString()}
+                      </div>
+                    </div>
                   </td>
                   {/* 에어드라이어 — 일반 정비 항목 */}
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
-                    <div className="text-xs">{vehicle.air_dryer_date}</div>
+                    <div className="text-xs">
+                      <div className={getHighlightClass(highlights.airDryer, warnings.airDryer)}>
+                        {vehicle.air_dryer_date}
+                      </div>
+                      <div className={getHighlightClass(highlights.airDryer, warnings.airDryer) || "text-gray-500"}>
+                        {vehicle.air_dryer_mileage?.toLocaleString()}
+                      </div>
+                    </div>
                   </td>
                   {/* PTO조인트 — 일반 정비 항목 */}
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
-                    <div className="text-xs">{vehicle.pto_joint_date}</div>
+                    <div className="text-xs">
+                      <div className={getHighlightClass(highlights.ptoJoint, warnings.ptoJoint)}>
+                        {vehicle.pto_joint_date}
+                      </div>
+                      <div className={getHighlightClass(highlights.ptoJoint, warnings.ptoJoint) || "text-gray-500"}>
+                        {vehicle.pto_joint_mileage?.toLocaleString()}
+                      </div>
+                    </div>
                   </td>
                   {/* 히터 — 일반 정비 항목 */}
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
                     <div className="text-xs">
-                      <span
-                        className={
-                          highlights.heater
-                            ? "font-bold text-red-600"
-                            : warnings.heater
-                              ? "font-bold text-blue-600"
-                              : ""
-                        }
-                      >
+                      <div className={getHighlightClass(highlights.heater, warnings.heater)}>
                         {vehicle.heater_date || "-"}
-                      </span>
+                      </div>
+                      <div className={getHighlightClass(highlights.heater, warnings.heater) || "text-gray-500"}>
+                        {vehicle.heater_mileage?.toLocaleString()}
+                      </div>
                     </div>
                   </td>
                   {/* 기타 — 일반 정비 항목 */}
