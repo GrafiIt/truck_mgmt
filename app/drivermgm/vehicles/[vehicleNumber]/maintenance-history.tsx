@@ -24,24 +24,24 @@ import { formatNumberWithCommas, parseNumberFromFormatted } from "@/lib/number-f
 
 const VEHICLE_FIELDS = [
   { value: "all", label: "전체", type: "all" },
-  { value: "air_dryer", label: "에어드라이어", type: "date" },
-  { value: "air_tank", label: "에어탱크", type: "date" },
-  { value: "axle_bearing", label: "축베어링", type: "date" },
+  { value: "air_dryer", label: "에어드라이어", type: "both" },
+  { value: "air_tank", label: "에어탱크", type: "both" },
+  { value: "axle_bearing", label: "축베어링", type: "both" },
   { value: "battery", label: "배터리", type: "both" },
   { value: "defu_oil", label: "데후오일", type: "both" },
   { value: "diesel_filter", label: "경유필터", type: "both" },
   { value: "dry_filter", label: "드라이필터", type: "both" },
   { value: "engine_oil", label: "엔진오일", type: "both" },
   { value: "grease", label: "구리스", type: "both" },
-  { value: "heater", label: "히터", type: "date" },
+  { value: "heater", label: "히터", type: "both" },
   { value: "inspection", label: "정기점검", type: "inspection" },
-  { value: "lining", label: "라이닝", type: "date" },
+  { value: "lining", label: "라이닝", type: "both" },
   { value: "mission_oil", label: "미션오일", type: "both" },
   { value: "monthly_mileage", label: "월간주행거리", type: "monthly_mileage" },
   { value: "others", label: "기타", type: "others" },
   { value: "power_oil", label: "파워오일", type: "both" },
-  { value: "pto_joint", label: "PTO조인트", type: "date" },
-  { value: "pto_pump", label: "PTO펌프", type: "date" },
+  { value: "pto_joint", label: "PTO조인트", type: "both" },
+  { value: "pto_pump", label: "PTO펌프", type: "both" },
   { value: "refueling", label: "주유", type: "refueling" },
   { value: "tire", label: "타이어", type: "both" },
   { value: "water_separator", label: "수분분리기", type: "both" },
@@ -366,7 +366,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
         // 검색 대상 필드 결정
         let searchTargets: string[] = []
 
-        // 컬럼별로 검색 대상 필드 ��정
+        // 컬럼별로 검��� 대상 필드 ��정
         if (record.field_name === "refueling") {
           // 주유: 수리업체(주유소명), 금액(주유비)
           searchTargets = [
@@ -857,12 +857,6 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                         <Input type="number" id="mileage_value" name="mileage_value" required />
                       </div>
                     )}
-                    {selectedFieldConfig.type === "date" && (
-                      <div className="md:col-span-2">
-                        <Label htmlFor="date_value">정비실행일</Label>
-                        <Input type="date" id="date_value" name="date_value" required />
-                      </div>
-                    )}
                     {selectedFieldConfig.type === "both" && (
                       <>
                         <div>
@@ -880,10 +874,6 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                             onChange={(e) => setMileageValue(parseNumberFromFormatted(e.target.value))}
                           />
                         </div>
-                      </>
-                    )}
-                    {(selectedFieldConfig.type === "both" || selectedFieldConfig.type === "date") && (
-                      <>
                         <div>
                           <Label htmlFor="repair_shop">수리업체</Label>
                           <Input
@@ -1430,58 +1420,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                   <div className="p-2 bg-muted rounded text-sm">{recordToEdit.field_label}</div>
                 </div>
 
-                {/* === type: "date" 항목 (에어드라이어, 에어탱크, 축베어링, 히터, 라이닝, PTO조인트, PTO펌프) === */}
-                {(() => {
-                  const fieldConfig = VEHICLE_FIELDS.find(f => f.value === recordToEdit.field_name)
-                  const fieldType = fieldConfig?.type
-                  return fieldType === "date"
-                })() && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-date">정비실행일</Label>
-                      <Input
-                        id="edit-date"
-                        type="date"
-                        value={editValues.date_value || ""}
-                        onChange={(e) => setEditValues({ ...editValues, date_value: e.target.value })}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-repair-shop">수리업체</Label>
-                        <Input
-                          id="edit-repair-shop"
-                          value={editValues.repair_shop || ""}
-                          onChange={(e) => setEditValues({ ...editValues, repair_shop: e.target.value })}
-                          placeholder="수리업체명"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-cost">금액 (원)</Label>
-                        <Input
-                          id="edit-cost"
-                          type="text"
-                          inputMode="numeric"
-                          value={formatNumberWithCommas(editValues.cost || "")}
-                          onChange={(e) => setEditValues({ ...editValues, cost: parseNumberFromFormatted(e.target.value) })}
-                          placeholder="0"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-notes">정비 기타 사항</Label>
-                      <Textarea
-                        id="edit-notes"
-                        value={editValues.text_value2 || ""}
-                        onChange={(e) => setEditValues({ ...editValues, text_value2: e.target.value })}
-                        placeholder="정��� 기타 사항을 입력하세요"
-                        rows={3}
-                      />
-                    </div>
-                  </>
-                )}
-
-                {/* === type: "both" 항목 (배터리, 데후오일, 경유필터, 드라이필터, 엔진오일, 구리스, 미션오일, 파워오일, 타이어, 수분분리기) === */}
+                {/* === type: "both" 항목 (모든 일반 정비 항목) === */}
                 {(() => {
                   const fieldConfig = VEHICLE_FIELDS.find(f => f.value === recordToEdit.field_name)
                   const fieldType = fieldConfig?.type
