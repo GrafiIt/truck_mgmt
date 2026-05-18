@@ -128,10 +128,14 @@ export default function VehicleDetailForm({
     tire: sh("타이어", vehicle.tire_date, vehicle.tire_mileage),
     dryFilter: sh("드라이필터", vehicle.dry_filter_date, vehicle.dry_filter_mileage),
     waterSeparator: sh("수분분리기", vehicle.water_separator_date, vehicle.water_separator_mileage),
-    lining: sh("라이닝", vehicle.lining_date, null),
+    lining: sh("라이닝", vehicle.lining_date, vehicle.lining_mileage),
     battery: sh("배터리", vehicle.battery_date, vehicle.battery_mileage),
-    airTank: sh("에어탱크", vehicle.air_tank_date, null),
-    axleBearing: sh("축베어링", vehicle.axle_bearing_date, null),
+    airTank: sh("에어탱크", vehicle.air_tank_date, vehicle.air_tank_mileage),
+    axleBearing: sh("축베어링", vehicle.axle_bearing_date, vehicle.axle_bearing_mileage),
+    airDryer: sh("에어드라이어", vehicle.air_dryer_date, vehicle.air_dryer_mileage),
+    ptoJoint: sh("PTO조인트", vehicle.pto_joint_date, vehicle.pto_joint_mileage),
+    ptoJump: sh("PTO펌프", vehicle.pto_pump_date, vehicle.pto_pump_mileage),
+    heater: sh("히터", vehicle.heater_date, vehicle.heater_mileage),
     inspection: sh("정기검사", vehicle.last_inspection_date, null),
   }
 
@@ -144,10 +148,14 @@ export default function VehicleDetailForm({
     tire: sw("타이어", vehicle.tire_date, vehicle.tire_mileage),
     dryFilter: sw("드라이필터", vehicle.dry_filter_date, vehicle.dry_filter_mileage),
     waterSeparator: sw("수분분리기", vehicle.water_separator_date, vehicle.water_separator_mileage),
-    lining: sw("라이닝", vehicle.lining_date, null),
+    lining: sw("라이닝", vehicle.lining_date, vehicle.lining_mileage),
     battery: sw("배터리", vehicle.battery_date, vehicle.battery_mileage),
-    airTank: sw("에어탱크", vehicle.air_tank_date, null),
-    axleBearing: sw("축베어링", vehicle.axle_bearing_date, null),
+    airTank: sw("에어탱크", vehicle.air_tank_date, vehicle.air_tank_mileage),
+    axleBearing: sw("축베어링", vehicle.axle_bearing_date, vehicle.axle_bearing_mileage),
+    airDryer: sw("에어드라이어", vehicle.air_dryer_date, vehicle.air_dryer_mileage),
+    ptoJoint: sw("PTO조인트", vehicle.pto_joint_date, vehicle.pto_joint_mileage),
+    ptoJump: sw("PTO펌프", vehicle.pto_pump_date, vehicle.pto_pump_mileage),
+    heater: sw("히터", vehicle.heater_date, vehicle.heater_mileage),
     inspection: sw("정기검사", vehicle.last_inspection_date, null),
   }
 
@@ -398,7 +406,19 @@ export default function VehicleDetailForm({
 
           <div className="col-span-full md:col-span-1">
             <Label>에어드라이어</Label>
-            <Input type="date" value={vehicle.air_dryer_date || ""} disabled className="bg-gray-50" />
+            <div className="flex gap-2">
+              <Input
+                type="date"
+                value={vehicle.air_dryer_date || ""}
+                disabled
+                className={`bg-gray-50 ${getHighlightClass(highlights.airDryer, warnings.airDryer)}`}
+              />
+              <Input
+                value={vehicle.air_dryer_mileage?.toLocaleString() || ""}
+                disabled
+                className={`bg-gray-50 ${getHighlightClass(highlights.airDryer, warnings.airDryer)}`}
+              />
+            </div>
           </div>
 
           <div className="col-span-full md:col-span-1">
@@ -437,12 +457,19 @@ export default function VehicleDetailForm({
 
           <div className="col-span-full md:col-span-1">
             <Label>라이닝</Label>
-            <Input
-              type="date"
-              value={vehicle.lining_date || ""}
-              disabled
-              className={`bg-gray-50 ${getHighlightClass(highlights.lining, warnings.lining)}`}
-            />
+            <div className="flex gap-2">
+              <Input
+                type="date"
+                value={vehicle.lining_date || ""}
+                disabled
+                className={`bg-gray-50 ${getHighlightClass(highlights.lining, warnings.lining)}`}
+              />
+              <Input
+                value={vehicle.lining_mileage?.toLocaleString() || ""}
+                disabled
+                className={`bg-gray-50 ${getHighlightClass(highlights.lining, warnings.lining)}`}
+              />
+            </div>
           </div>
 
           <div className="col-span-full md:col-span-1">
@@ -481,37 +508,87 @@ export default function VehicleDetailForm({
 
           <div className="col-span-full md:col-span-1">
             <Label>에어탱크</Label>
-            <Input
-              type="date"
-              value={vehicle.air_tank_date || ""}
-              disabled
-              className={`bg-gray-50 ${getHighlightClass(highlights.airTank, warnings.airTank)}`}
-            />
+            <div className="flex gap-2">
+              <Input
+                type="date"
+                value={vehicle.air_tank_date || ""}
+                disabled
+                className={`bg-gray-50 ${getHighlightClass(highlights.airTank, warnings.airTank)}`}
+              />
+              <Input
+                value={vehicle.air_tank_mileage?.toLocaleString() || ""}
+                disabled
+                className={`bg-gray-50 ${getHighlightClass(highlights.airTank, warnings.airTank)}`}
+              />
+            </div>
           </div>
 
           <div className="col-span-full md:col-span-1">
             <Label>축베어링</Label>
-            <Input
-              type="date"
-              value={vehicle.axle_bearing_date || ""}
-              disabled
-              className={`bg-gray-50 ${getHighlightClass(highlights.axleBearing, warnings.axleBearing)}`}
-            />
+            <div className="flex gap-2">
+              <Input
+                type="date"
+                value={vehicle.axle_bearing_date || ""}
+                disabled
+                className={`bg-gray-50 ${getHighlightClass(highlights.axleBearing, warnings.axleBearing)}`}
+              />
+              <Input
+                value={vehicle.axle_bearing_mileage?.toLocaleString() || ""}
+                disabled
+                className={`bg-gray-50 ${getHighlightClass(highlights.axleBearing, warnings.axleBearing)}`}
+              />
+            </div>
           </div>
 
           <div className="col-span-full md:col-span-1">
             <Label>PTO조인트</Label>
-            <Input type="date" value={vehicle.pto_joint_date || ""} disabled className="bg-gray-50" />
+            <div className="flex gap-2">
+              <Input
+                type="date"
+                value={vehicle.pto_joint_date || ""}
+                disabled
+                className={`bg-gray-50 ${getHighlightClass(highlights.ptoJoint, warnings.ptoJoint)}`}
+              />
+              <Input
+                value={vehicle.pto_joint_mileage?.toLocaleString() || ""}
+                disabled
+                className={`bg-gray-50 ${getHighlightClass(highlights.ptoJoint, warnings.ptoJoint)}`}
+              />
+            </div>
           </div>
 
           <div className="col-span-full md:col-span-1">
             <Label>PTO펌프</Label>
-            <Input type="date" value={vehicle.pto_pump_date || ""} disabled className="bg-gray-50" />
+            <div className="flex gap-2">
+              <Input
+                type="date"
+                value={vehicle.pto_pump_date || ""}
+                disabled
+                className={`bg-gray-50 ${getHighlightClass(highlights.ptoJump, warnings.ptoJump)}`}
+              />
+              <Input
+                value={vehicle.pto_pump_mileage?.toLocaleString() || ""}
+                disabled
+                className={`bg-gray-50 ${getHighlightClass(highlights.ptoJump, warnings.ptoJump)}`}
+              />
+            </div>
           </div>
 
           <div className="col-span-full md:col-span-1">
             <Label>히터</Label>
-            <Input type="date" value={vehicle.heater_date || ""} disabled className="bg-gray-50" />
+            <div className="flex gap-2">
+              <Input
+                type="date"
+                value={vehicle.heater_date || ""}
+                disabled
+                className={`bg-gray-50 ${getHighlightClass(highlights.heater, warnings.heater)}`}
+              />
+              <Input
+                value={vehicle.heater_mileage?.toLocaleString() || ""}
+                disabled
+                className={`bg-gray-50 ${getHighlightClass(highlights.heater, warnings.heater)}`}
+              />
+            </div>
           </div>
 
           {/* Added "기타" field */}
