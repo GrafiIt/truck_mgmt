@@ -148,6 +148,7 @@ export async function addCompany(companyCode: string, companyName: string) {
       -- vehicles 테이블
       CREATE TABLE IF NOT EXISTS drivermgm.vehicles_${companyCode} (LIKE drivermgm.vehicles_human INCLUDING ALL);
       ALTER TABLE drivermgm.vehicles_${companyCode} ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE drivermgm.vehicles_${companyCode} ADD COLUMN IF NOT EXISTS vehicle_order INTEGER;
 
       -- vehicle_users 테이블
       CREATE TABLE IF NOT EXISTS drivermgm.vehicle_users_${companyCode} (LIKE drivermgm.vehicle_users_human INCLUDING ALL);

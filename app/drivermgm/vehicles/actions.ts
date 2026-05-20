@@ -30,6 +30,15 @@ export async function getVehicles(companyCodeParam?: string) {
         tableName = await getTableName("vehicles")
       }
       
+      // vehicle_order 컬럼이 없는 기존 테이블을 위해 자동 마이그레이션
+      try {
+        await supabase.rpc('exec_sql', {
+          sql_query: `ALTER TABLE drivermgm.${tableName} ADD COLUMN IF NOT EXISTS vehicle_order INTEGER`
+        })
+      } catch (e) {
+        // 마이그레이션 실패 시 무시 (권한 문제 등)
+      }
+
       const { data, error } = await supabase.from(tableName).select("*").order("vehicle_number", { ascending: true })
 
       if (error) {
@@ -47,23 +56,34 @@ export async function getVehicles(companyCodeParam?: string) {
         return []
       }
 
-      // vehicle_type을 각 차량별로 가져오기 (PostgREST 스키마 캐시 우회)
+      // vehicle_type 및 vehicle_order를 각 차량별로 가져오기 (PostgREST 스키마 캐시 우회)
       if (data && data.length > 0) {
         try {
           const vehicleNumbers = data.map(v => `'${v.vehicle_number.replace(/'/g, "''")}'`).join(',')
-          const { data: typeData } = await supabase.rpc('query_sql', {
-            sql_query: `SELECT vehicle_number, vehicle_type FROM drivermgm.${tableName} WHERE vehicle_number IN (${vehicleNumbers})`
+          const { data: extraData } = await supabase.rpc('query_sql', {
+            sql_query: `SELECT vehicle_number, vehicle_type, vehicle_order FROM drivermgm.${tableName} WHERE vehicle_number IN (${vehicleNumbers})`
           })
           
-          if (typeData && Array.isArray(typeData)) {
-            const typeMap = new Map(typeData.map((item: any) => [item.vehicle_number, item.vehicle_type]))
+          if (extraData && Array.isArray(extraData)) {
+            const extraMap = new Map(extraData.map((item: any) => [item.vehicle_number, item]))
             data.forEach((vehicle: any) => {
-              vehicle.vehicle_type = typeMap.get(vehicle.vehicle_number) || null
+              const extra = extraMap.get(vehicle.vehicle_number)
+              vehicle.vehicle_type = extra?.vehicle_type || null
+              vehicle.vehicle_order = extra?.vehicle_order ?? null
             })
           }
         } catch (e) {
-          console.error("[v0] getVehicles: Failed to fetch vehicle_type data", e)
+          console.error("[v0] getVehicles: Failed to fetch extra column data", e)
         }
+      }
+
+      // vehicle_order 기준 오름차순 정렬 (null은 맨 뒤)
+      if (data) {
+        data.sort((a: any, b: any) => {
+          const orderA = a.vehicle_order ?? Number.MAX_SAFE_INTEGER
+          const orderB = b.vehicle_order ?? Number.MAX_SAFE_INTEGER
+          return orderA - orderB
+        })
       }
 
       // previous_month_mileage는 이제 트리거로 vehicles 테이블에 직접 저장됨
@@ -107,17 +127,18 @@ export async function getVehicleByNumber(vehicleNumber: string) {
       return null
     }
 
-    // vehicle_type을 직접 SQL로 가져오기 (PostgREST 스키마 캐시 우회)
+    // vehicle_type, vehicle_order를 직접 SQL로 가져오기 (PostgREST 스키마 캐시 우회)
     if (data) {
       try {
         const { data: sqlResult } = await supabase.rpc('query_sql', {
-          sql_query: `SELECT vehicle_type FROM drivermgm.${tableName} WHERE vehicle_number = '${vehicleNumber.replace(/'/g, "''")}'`
+          sql_query: `SELECT vehicle_type, vehicle_order FROM drivermgm.${tableName} WHERE vehicle_number = '${vehicleNumber.replace(/'/g, "''")}'`
         })
         if (sqlResult && Array.isArray(sqlResult) && sqlResult.length > 0) {
           data.vehicle_type = sqlResult[0].vehicle_type
+          data.vehicle_order = sqlResult[0].vehicle_order ?? null
         }
       } catch (e) {
-        // vehicle_type 조회 실패 시 무시
+        // 조회 실패 시 무시
       }
     }
 
@@ -348,6 +369,24 @@ export async function createVehicle(formData: FormData) {
     const vehicleType = (formData.get("vehicle_type") as string) || ""
 
     const tableName = await getTableName("vehicles")
+
+    // vehicle_order 컬럼 자동 마이그레이션 (기존 테이블 대비)
+    try {
+      await supabase.rpc('exec_sql', {
+        sql_query: `ALTER TABLE drivermgm.${tableName} ADD COLUMN IF NOT EXISTS vehicle_order INTEGER`
+      })
+    } catch (e) { /* 무시 */ }
+
+    // 기존 최대 vehicle_order + 1을 신규 차량 순번으로 설정
+    try {
+      const { data: maxData } = await supabase.rpc('query_sql', {
+        sql_query: `SELECT COALESCE(MAX(vehicle_order), 0) AS max_order FROM drivermgm.${tableName}`
+      })
+      const maxOrder = maxData?.[0]?.max_order ?? 0
+      vehicleData.vehicle_order = maxOrder + 1
+    } catch (e) {
+      // 순번 계산 실패 시 무시 (NULL로 저장됨)
+    }
 
     // PostgREST를 우회하여 exec_sql로 직접 INSERT (스키마 캐시 문제 방지)
     const columns = Object.keys(vehicleData)
@@ -613,6 +652,7 @@ export async function updateVehicleBasicInfo(vehicleNumber: string, updates: any
     if (updates.last_inspection_date !== undefined) setClauses.push(`last_inspection_date = ${formatSqlValue("last_inspection_date", updates.last_inspection_date)}`)
     if (updates.total_mileage !== undefined) setClauses.push(`total_mileage = ${formatSqlValue("total_mileage", updates.total_mileage)}`)
     if (updates.vehicle_type !== undefined) setClauses.push(`vehicle_type = ${formatSqlValue("vehicle_type", updates.vehicle_type)}`)
+    if (updates.vehicle_order !== undefined) setClauses.push(`vehicle_order = ${updates.vehicle_order === null || updates.vehicle_order === "" ? "NULL" : Number(updates.vehicle_order)}`)
 
     const updateSQL = `UPDATE drivermgm.${tableName} SET ${setClauses.join(", ")} WHERE vehicle_number = '${vehicleNumber.replace(/'/g, "''")}'`
 
@@ -718,6 +758,25 @@ export async function addRefuelingRecord(formData: FormData) {
   } catch (error) {
     console.error("[v0] Error in addRefuelingRecord:", error)
     return { success: false, error: "주유 기록 추가 중 오류가 발생했습니다." }
+  }
+}
+
+export async function checkVehicleOrderDuplicate(order: number, excludeVehicleNumber: string) {
+  try {
+    const supabase = await createAdminClient()
+    if (!supabase || typeof supabase.from !== "function") {
+      return { isDuplicate: false, existingVehicleNumber: null }
+    }
+    const tableName = await getTableName("vehicles")
+    const { data } = await supabase.rpc('query_sql', {
+      sql_query: `SELECT vehicle_number FROM drivermgm.${tableName} WHERE vehicle_order = ${Number(order)} AND vehicle_number != '${excludeVehicleNumber.replace(/'/g, "''")}'`
+    })
+    if (data && Array.isArray(data) && data.length > 0) {
+      return { isDuplicate: true, existingVehicleNumber: data[0].vehicle_number as string }
+    }
+    return { isDuplicate: false, existingVehicleNumber: null }
+  } catch (error) {
+    return { isDuplicate: false, existingVehicleNumber: null }
   }
 }
 
