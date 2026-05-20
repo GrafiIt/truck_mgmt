@@ -43,7 +43,6 @@ export default function VehicleHeader() {
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut className="w-4 h-4 mr-1" />
-              로그아웃
             </Button>
             <Button variant="ghost" size="icon" onClick={handleNotifications} title="알림 설정">
               <Lightbulb className="w-5 h-5" />
