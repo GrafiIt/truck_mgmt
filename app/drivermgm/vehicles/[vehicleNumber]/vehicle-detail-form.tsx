@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { deleteVehicle, updateVehicleBasicInfo, verifyAdminCredentials } from "../actions"
+import { deleteVehicle, updateVehicleBasicInfo, verifyAdminCredentials, checkVehicleOrderDuplicate } from "../actions"
 import { formatNumberWithCommas, parseNumberFromFormatted } from "@/lib/number-formatter"
 import {
   type NotificationThreshold,
@@ -58,7 +58,10 @@ export default function VehicleDetailForm({
     last_inspection_date: vehicle?.last_inspection_date || "",
     total_mileage: vehicle?.total_mileage ?? 0,
     vehicle_type: vehicle?.vehicle_type || "",
+    vehicle_order: vehicle?.vehicle_order ?? null as number | null,
   })
+  const [orderDuplicateInfo, setOrderDuplicateInfo] = useState<{ isDuplicate: boolean; vehicleNumber: string | null }>({ isDuplicate: false, vehicleNumber: null })
+  const [isCheckingOrder, setIsCheckingOrder] = useState(false)
 
   const handleDelete = async () => {
     setIsDeleting(true)
@@ -86,6 +89,14 @@ export default function VehicleDetailForm({
   }
 
   const handleEdit = async () => {
+    // 저장 전 차량순번 중복 최종 확인
+    if (editData.vehicle_order !== null && editData.vehicle_order !== undefined) {
+      const dupCheck = await checkVehicleOrderDuplicate(editData.vehicle_order, vehicle.vehicle_number)
+      if (dupCheck.isDuplicate) {
+        alert(`차량순번 ${editData.vehicle_order}번은 이미 "${dupCheck.existingVehicleNumber}" 차량이 사용 중입니다. 다른 번호를 선택해주세요.`)
+        return
+      }
+    }
     setIsEditing(true)
     try {
       const isValid = await verifyAdminCredentials(editUsername, editPassword)
@@ -183,7 +194,9 @@ export default function VehicleDetailForm({
                   last_inspection_date: vehicle.last_inspection_date || "",
                   total_mileage: vehicle.total_mileage ?? 0,
                   vehicle_type: vehicle.vehicle_type || "",
+                  vehicle_order: vehicle.vehicle_order ?? null,
                 })
+                setOrderDuplicateInfo({ isDuplicate: false, vehicleNumber: null })
                 setShowEditDialog(true)
               }}
             >
@@ -199,17 +212,24 @@ export default function VehicleDetailForm({
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div>
-            <Label>Transporter</Label>
-            <Input value={vehicle.transporter || ""} disabled className="bg-gray-50" />
-          </div>
-          <div>
-            <Label>운전원</Label>
-            <Input value={vehicle.driver_name || ""} disabled className="bg-gray-50" />
-          </div>
-          <div>
-            <Label>차량 종류</Label>
-            <Input value={vehicle.vehicle_type || ""} disabled className="bg-gray-50" />
+          {/* 첫 번째 행: 차량순번 + Transporter + 운전원 + 차량 종류 (4열 레이아웃) */}
+          <div className="col-span-full grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <Label>차량순번</Label>
+              <Input value={vehicle.vehicle_order ?? "-"} disabled className="bg-gray-50" />
+            </div>
+            <div>
+              <Label>Transporter</Label>
+              <Input value={vehicle.transporter || ""} disabled className="bg-gray-50" />
+            </div>
+            <div>
+              <Label>운전원</Label>
+              <Input value={vehicle.driver_name || ""} disabled className="bg-gray-50" />
+            </div>
+            <div>
+              <Label>차량 종류</Label>
+              <Input value={vehicle.vehicle_type || ""} disabled className="bg-gray-50" />
+            </div>
           </div>
           <div>
             <Label>제조사</Label>
@@ -652,6 +672,44 @@ export default function VehicleDetailForm({
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <Label htmlFor="edit_vehicle_order">차량순번</Label>
+                <Input
+                  id="edit_vehicle_order"
+                  type="number"
+                  min={1}
+                  value={editData.vehicle_order === null ? "" : editData.vehicle_order}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? null : parseInt(e.target.value, 10)
+                    setEditData({ ...editData, vehicle_order: isNaN(val as number) ? null : val })
+                    setOrderDuplicateInfo({ isDuplicate: false, vehicleNumber: null })
+                  }}
+                  onBlur={async (e) => {
+                    const val = e.target.value === "" ? null : parseInt(e.target.value, 10)
+                    if (val !== null && !isNaN(val)) {
+                      setIsCheckingOrder(true)
+                      const result = await checkVehicleOrderDuplicate(val, vehicle.vehicle_number)
+                      setOrderDuplicateInfo(result)
+                      setIsCheckingOrder(false)
+                    } else {
+                      setOrderDuplicateInfo({ isDuplicate: false, vehicleNumber: null })
+                    }
+                  }}
+                  placeholder="순번 입력 (예: 1)"
+                  className={orderDuplicateInfo.isDuplicate ? "border-red-500 focus-visible:ring-red-500" : ""}
+                />
+                {isCheckingOrder && (
+                  <p className="text-xs text-gray-500 mt-1">중복 확인 중...</p>
+                )}
+                {orderDuplicateInfo.isDuplicate && (
+                  <p className="text-xs text-red-600 mt-1 font-semibold">
+                    이미 차량 &quot;{orderDuplicateInfo.vehicleNumber}&quot;이 이 순번을 사용 중입니다. 다른 번호를 입력해주세요.
+                  </p>
+                )}
+                {!orderDuplicateInfo.isDuplicate && !isCheckingOrder && editData.vehicle_order !== null && (
+                  <p className="text-xs text-green-600 mt-1">사용 가능한 순번입니다.</p>
+                )}
+              </div>
               <div>
                 <Label htmlFor="edit_transporter">Transporter</Label>
                 <Input

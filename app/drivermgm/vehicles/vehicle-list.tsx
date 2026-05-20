@@ -17,6 +17,7 @@ import {
 
 interface Vehicle {
   id: number
+  vehicle_order?: number | null
   transporter: string
   driver_name: string
   vehicle_number: string
@@ -72,7 +73,13 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
   const [searchTerm, setSearchTerm] = useState("")
 
   const filteredVehicles = useMemo(() => {
-    return vehicles.filter((vehicle) => vehicle.vehicle_number.toLowerCase().includes(searchTerm.toLowerCase()))
+    return vehicles
+      .filter((vehicle) => vehicle.vehicle_number.toLowerCase().includes(searchTerm.toLowerCase()))
+      .sort((a, b) => {
+        const orderA = a.vehicle_order ?? Number.MAX_SAFE_INTEGER
+        const orderB = b.vehicle_order ?? Number.MAX_SAFE_INTEGER
+        return orderA - orderB
+      })
   }, [searchTerm, vehicles])
 
   const handleExcelDownload = useCallback(() => {
@@ -248,9 +255,9 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
           <thead>
             {/* 1행: 그룹 헤더 */}
             <tr>
-              {/* 차량 정보 (연한 녹색) — Transporter~정기검사결과 11칸 */}
+              {/* 차량 정보 (연한 녹색) — 차량순번~정기검사결과 12칸 */}
               <th
-                colSpan={11}
+                colSpan={12}
                 style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "#d1fae5" }}
                 className="px-4 py-2 text-center font-bold whitespace-nowrap text-green-800 border border-green-300"
               >
@@ -276,6 +283,7 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
             {/* 2행: 세부 컬럼 헤더 */}
             <tr className="border-b">
               {/* 차량 정보 컬럼들 */}
+              <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#ecfdf5" }} className="px-4 py-3 text-center font-semibold whitespace-nowrap border border-green-200">차량순번</th>
               <th style={{ position: "sticky", top: "33px", zIndex: 20, backgroundColor: "#ecfdf5" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-green-200">Transporter</th>
               <th style={{ position: "sticky", top: "33px", left: 0, zIndex: 50, backgroundColor: "#ecfdf5", minWidth: "80px", width: "80px" }} className="px-4 py-3 text-left font-semibold whitespace-nowrap border border-green-200">
                 운전원
@@ -362,6 +370,7 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
 
               return (
                 <tr key={vehicle.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-center font-medium">{vehicle.vehicle_order ?? "-"}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm">{vehicle.transporter}</td>
                   <td
                     className="px-4 py-3 whitespace-nowrap text-sm bg-white dark:bg-gray-900"
