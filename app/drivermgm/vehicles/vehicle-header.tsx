@@ -48,10 +48,10 @@ export default function VehicleHeader() {
             <Button variant="ghost" size="icon" onClick={handleNotifications} title="알림 설정">
               <Lightbulb className="w-5 h-5" />
             </Button>
+            <PwaInstallButton />
             <Button variant="ghost" size="icon" onClick={handleSettings} title="사용자 관리">
               <Settings className="w-5 h-5" />
             </Button>
-            <PwaInstallButton />
           </div>
         </div>
       </div>
