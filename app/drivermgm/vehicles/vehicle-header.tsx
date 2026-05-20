@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { LogOut, Settings, Lightbulb } from "lucide-react"
 import { vehicleLogout } from "@/lib/vehicle-auth"
+import PwaInstallButton from "@/components/pwa/PwaInstallButton"
 
 export default function VehicleHeader() {
   const router = useRouter()
@@ -50,6 +51,7 @@ export default function VehicleHeader() {
             <Button variant="ghost" size="icon" onClick={handleSettings} title="사용자 관리">
               <Settings className="w-5 h-5" />
             </Button>
+            <PwaInstallButton />
           </div>
         </div>
       </div>

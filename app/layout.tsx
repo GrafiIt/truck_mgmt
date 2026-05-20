@@ -19,6 +19,7 @@ export const metadata: Metadata = {
   title: "Driver Management System",
   description: "Vehicle and Driver Management System",
   generator: "v0.app",
+  manifest: "/manifest.json",
   icons: {
     icon: "/favicon.png",
   },
