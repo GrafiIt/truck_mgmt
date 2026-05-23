@@ -4,6 +4,59 @@ import { getTableNameFromRequest } from "@/lib/table-utils"
 
 export const dynamic = "force-dynamic"
 
+// 차량 테이블의 정비 항목 최종값을 업데이트하는 헬퍼 함수
+async function updateVehicleLatestMaintenanceValue(
+  supabase: any,
+  vehiclesTable: string,
+  fieldHistoryTable: string,
+  vehicleId: number,
+  fieldName: string
+) {
+  console.log("[v0] Updating vehicle latest value for field:", fieldName, "vehicleId:", vehicleId)
+
+  // 주유, 월간주행거리, 기타 항목은 vehicles 테이블에 별도 컬럼이 없거나 특수 처리 필요
+  if (fieldName === "refueling" || fieldName === "monthly_mileage" || fieldName === "others" || fieldName === "inspection") {
+    console.log("[v0] Field", fieldName, "does not require vehicle table update in save API")
+    return
+  }
+
+  // 일반 정비항목: vehicle_field_history에서 가장 최신 레코드 조회
+  // date_value(정비실행일) 기준으로 가장 최신 레코드를 가져옴
+  const { data: latestRecord } = await supabase
+    .from(fieldHistoryTable)
+    .select("*")
+    .eq("vehicle_id", vehicleId)
+    .eq("field_name", fieldName)
+    .order("date_value", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  console.log("[v0] Latest record for field", fieldName, ":", latestRecord)
+
+  // 차량 테이블의 해당 필드 업데이트
+  const updates: Record<string, any> = {
+    updated_at: new Date().toISOString(),
+  }
+  
+  // 정비 항목별 날짜/주행거리 컬럼명 매핑
+  updates[`${fieldName}_date`] = latestRecord?.date_value || null
+  updates[`${fieldName}_mileage`] = latestRecord?.mileage_value || null
+
+  console.log("[v0] Updating vehicle with:", updates)
+
+  const { error: updateError } = await supabase
+    .from(vehiclesTable)
+    .update(updates)
+    .eq("id", vehicleId)
+
+  if (updateError) {
+    console.error("[v0] Error updating vehicle field:", updateError)
+  } else {
+    console.log("[v0] Vehicle", fieldName, "values updated successfully")
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
@@ -56,8 +109,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. vehicles 테이블의 최종 저장값 업데이트는 스킵
-    // (차량 정보는 vehicle_field_history에만 저장)
+    // 2. vehicles 테이블의 최종 저장값 업데이트
+    const vehiclesTable = await getTableNameFromRequest(request, "vehicles")
+    await updateVehicleLatestMaintenanceValue(
+      supabase,
+      vehiclesTable,
+      tableName,
+      parseInt(vehicleId),
+      fieldName
+    )
+
     console.log("[v0] Maintenance record saved successfully")
     return NextResponse.json({ success: true })
   } catch (error) {
