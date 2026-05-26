@@ -54,11 +54,10 @@ export default function StatisticsPage() {
         
         setCompanyCode(code)
         
-        // Set default dates: January 1 of current year to today
+        // Set default dates: January 1 of current year to today (local timezone)
         const today = new Date()
-        const yearStart = new Date(today.getFullYear(), 0, 1)
-        const startStr = yearStart.toISOString().split("T")[0]
-        const endStr = today.toISOString().split("T")[0]
+        const startStr = `${today.getFullYear()}-01-01`
+        const endStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
         setStartDate(startStr)
         setEndDate(endStr)
         
@@ -154,11 +153,11 @@ export default function StatisticsPage() {
     const totals = calculateTotals()
     const count = sortedData.length || 1
     return {
-      period_mileage: (totals.period_mileage / count).toFixed(1),
-      total_fuel_cost: (totals.total_fuel_cost / count).toFixed(0),
-      total_fuel_amount: (totals.total_fuel_amount / count).toFixed(1),
-      total_maintenance_cost: (totals.total_maintenance_cost / count).toFixed(0),
-      fuel_efficiency: (totals.fuel_efficiency / count).toFixed(2),
+      period_mileage: Math.round(totals.period_mileage / count).toLocaleString(),
+      total_fuel_cost: Math.round(totals.total_fuel_cost / count).toLocaleString(),
+      total_fuel_amount: Math.round(totals.total_fuel_amount / count).toLocaleString(),
+      total_maintenance_cost: Math.round(totals.total_maintenance_cost / count).toLocaleString(),
+      fuel_efficiency: (totals.fuel_efficiency / count).toFixed(1),
     }
   }
 
