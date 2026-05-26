@@ -12,7 +12,7 @@ export interface VehicleStat {
   fuel_efficiency: number
 }
 
-export async function getVehicleStatistics(startDate: string, endDate: string): Promise<VehicleStat[]> {
+export async function getVehicleStatistics(companyCode: string, startDate: string, endDate: string): Promise<VehicleStat[]> {
   try {
     const supabase = await createAdminClient()
 
@@ -21,7 +21,13 @@ export async function getVehicleStatistics(startDate: string, endDate: string): 
       return []
     }
 
+    if (!companyCode) {
+      console.error("[v0] getVehicleStatistics: companyCode is required")
+      return []
+    }
+
     const { data, error } = await supabase.rpc("get_vehicle_statistics", {
+      p_company_code: companyCode,
       p_start_date: startDate,
       p_end_date: endDate,
     })

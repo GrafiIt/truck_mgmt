@@ -25,6 +25,7 @@ type SortOrder = "asc" | "desc"
 export default function StatisticsPage() {
   const router = useRouter()
   const [isAuthed, setIsAuthed] = useState(false)
+  const [companyCode, setCompanyCode] = useState<string | null>(null)
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const [sortField, setSortField] = useState<SortField>("vehicle_number")
@@ -40,6 +41,19 @@ export default function StatisticsPage() {
         router.push("/drivermgm/login")
       } else {
         setIsAuthed(true)
+        
+        // Get company_code from cookie (same pattern as vehicle-list-client.tsx)
+        const cookieStr = document.cookie
+        const match = cookieStr.match(/company_code=([^;]+)/)
+        const code = match ? decodeURIComponent(match[1]) : null
+        
+        if (!code) {
+          router.push("/drivermgm/login")
+          return
+        }
+        
+        setCompanyCode(code)
+        
         // Set default dates: January 1 of current year to today
         const today = new Date()
         const yearStart = new Date(today.getFullYear(), 0, 1)
@@ -48,18 +62,18 @@ export default function StatisticsPage() {
         setStartDate(startStr)
         setEndDate(endStr)
         
-        // Fetch initial data
-        await fetchData(startStr, endStr)
+        // Fetch initial data with company code
+        await fetchData(code, startStr, endStr)
       }
     }
     authenticate()
   }, [router])
 
-  const fetchData = useCallback(async (start: string, end: string) => {
+  const fetchData = useCallback(async (code: string, start: string, end: string) => {
     setIsLoading(true)
     setError(null)
     try {
-      const result = await getVehicleStatistics(start, end)
+      const result = await getVehicleStatistics(code, start, end)
       if (Array.isArray(result)) {
         setData(result)
       } else {
@@ -76,8 +90,8 @@ export default function StatisticsPage() {
   }, [])
 
   const handleSearch = async () => {
-    if (startDate && endDate) {
-      await fetchData(startDate, endDate)
+    if (companyCode && startDate && endDate) {
+      await fetchData(companyCode, startDate, endDate)
     }
   }
 
