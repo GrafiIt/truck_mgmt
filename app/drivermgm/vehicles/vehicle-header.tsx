@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { LogOut, Settings, Lightbulb } from "lucide-react"
+import { LogOut, Settings, Lightbulb, BarChart } from "lucide-react"
 import { vehicleLogout } from "@/lib/vehicle-auth"
 import PwaInstallButton from "@/components/pwa/PwaInstallButton"
 
@@ -20,6 +20,10 @@ export default function VehicleHeader() {
 
   const handleSettings = () => {
     router.push("/drivermgm/users")
+  }
+
+  const handleStatistics = () => {
+    router.push("/drivermgm/statistics")
   }
 
   const handleNotifications = () => {
@@ -43,6 +47,9 @@ export default function VehicleHeader() {
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut className="w-4 h-4 mr-1" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleStatistics} title="통계">
+              <BarChart className="w-5 h-5" />
             </Button>
             <Button variant="ghost" size="icon" onClick={handleNotifications} title="알림 설정">
               <Lightbulb className="w-5 h-5" />
