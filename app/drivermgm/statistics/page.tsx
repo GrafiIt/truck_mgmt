@@ -7,7 +7,16 @@ import VehicleHeader from "../vehicles/vehicle-header"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowUp, ArrowDown, Loader2 } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { ArrowUp, ArrowDown, Loader2, Download } from "lucide-react"
 import { getVehicleStatistics, type VehicleStat } from "./actions"
 
 interface StatisticsRow {
@@ -33,6 +42,9 @@ export default function StatisticsPage() {
   const [data, setData] = useState<StatisticsRow[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isExportOpen, setIsExportOpen] = useState(false)
+  const [selectedVehicles, setSelectedVehicles] = useState<string[]>([])
 
   useEffect(() => {
     const authenticate = async () => {
@@ -103,7 +115,10 @@ export default function StatisticsPage() {
   }
 
   const sortedData = useMemo(() => {
-    const dataToSort = [...data]
+    const query = searchQuery.trim().toLowerCase()
+    const dataToSort = query
+      ? data.filter((row) => row.vehicle_number.toLowerCase().includes(query))
+      : [...data]
     dataToSort.sort((a, b) => {
       let aValue = a[sortField]
       let bValue = b[sortField]
@@ -119,7 +134,7 @@ export default function StatisticsPage() {
       }
     })
     return dataToSort
-  }, [data, sortField, sortOrder])
+  }, [data, sortField, sortOrder, searchQuery])
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -159,6 +174,107 @@ export default function StatisticsPage() {
       total_maintenance_cost: Math.round(totals.total_maintenance_cost / count).toLocaleString(),
       fuel_efficiency: (totals.fuel_efficiency / count).toFixed(1),
     }
+  }
+
+  const openExportDialog = () => {
+    // Default: all currently visible vehicles checked
+    setSelectedVehicles(sortedData.map((row) => row.vehicle_number))
+    setIsExportOpen(true)
+  }
+
+  const toggleVehicle = (vehicleNumber: string) => {
+    setSelectedVehicles((prev) =>
+      prev.includes(vehicleNumber)
+        ? prev.filter((v) => v !== vehicleNumber)
+        : [...prev, vehicleNumber],
+    )
+  }
+
+  const allSelected = sortedData.length > 0 && selectedVehicles.length === sortedData.length
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedVehicles([])
+    } else {
+      setSelectedVehicles(sortedData.map((row) => row.vehicle_number))
+    }
+  }
+
+  const handleDownloadCSV = () => {
+    const rowsToExport = sortedData.filter((row) => selectedVehicles.includes(row.vehicle_number))
+    if (rowsToExport.length === 0) return
+
+    const headers = ["차량번호", "운행거리(km)", "주유비(원)", "주유량(L)", "정비비(원)", "연비(km/L)"]
+
+    // Escape a CSV cell (wrap in quotes if it contains comma, quote, or newline)
+    const escapeCell = (value: string | number) => {
+      const str = String(value)
+      if (/[",\n]/.test(str)) {
+        return `"${str.replace(/"/g, '""')}"`
+      }
+      return str
+    }
+
+    const dataLines = rowsToExport.map((row) =>
+      [
+        row.vehicle_number,
+        row.period_mileage,
+        row.total_fuel_cost,
+        row.total_fuel_amount,
+        row.total_maintenance_cost,
+        row.fuel_efficiency.toFixed(1),
+      ]
+        .map(escapeCell)
+        .join(","),
+    )
+
+    // Totals and averages for the selected vehicles
+    const count = rowsToExport.length
+    const sum = {
+      period_mileage: rowsToExport.reduce((s, r) => s + r.period_mileage, 0),
+      total_fuel_cost: rowsToExport.reduce((s, r) => s + r.total_fuel_cost, 0),
+      total_fuel_amount: rowsToExport.reduce((s, r) => s + r.total_fuel_amount, 0),
+      total_maintenance_cost: rowsToExport.reduce((s, r) => s + r.total_maintenance_cost, 0),
+      fuel_efficiency: rowsToExport.reduce((s, r) => s + r.fuel_efficiency, 0),
+    }
+
+    const totalLine = [
+      "합계",
+      sum.period_mileage,
+      sum.total_fuel_cost,
+      sum.total_fuel_amount,
+      sum.total_maintenance_cost,
+      sum.fuel_efficiency.toFixed(1),
+    ]
+      .map(escapeCell)
+      .join(",")
+
+    const averageLine = [
+      "평균",
+      Math.round(sum.period_mileage / count),
+      Math.round(sum.total_fuel_cost / count),
+      Math.round(sum.total_fuel_amount / count),
+      Math.round(sum.total_maintenance_cost / count),
+      (sum.fuel_efficiency / count).toFixed(1),
+    ]
+      .map(escapeCell)
+      .join(",")
+
+    const csvContent =
+      "\uFEFF" + [headers.join(","), ...dataLines, totalLine, averageLine].join("\r\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    const dateStamp = `${startDate}_${endDate}`
+    link.download = `차량통계_${dateStamp}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    setIsExportOpen(false)
   }
 
   if (!isAuthed) {
@@ -206,6 +322,31 @@ export default function StatisticsPage() {
                 ) : (
                   "검색"
                 )}
+              </Button>
+            </div>
+
+            {/* Search + Export Section */}
+            <div className="flex gap-4 items-end mb-6">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  차량번호 검색
+                </label>
+                <Input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="차량번호를 입력하세요"
+                  className="w-full"
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={openExportDialog}
+                disabled={isLoading || sortedData.length === 0}
+                className="px-6 bg-transparent"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                엑셀 다운로드
               </Button>
             </div>
           </div>
@@ -354,6 +495,65 @@ export default function StatisticsPage() {
           )}
         </Card>
       </main>
+
+      {/* Excel/CSV Download Dialog */}
+      <Dialog open={isExportOpen} onOpenChange={setIsExportOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>엑셀 다운로드</DialogTitle>
+            <DialogDescription>
+              다운로드할 차량을 선택하세요. 선택한 차량의 데이터만 CSV로 저장됩니다.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="select-all"
+                checked={allSelected}
+                onCheckedChange={toggleSelectAll}
+              />
+              <label
+                htmlFor="select-all"
+                className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer"
+              >
+                전체 선택
+              </label>
+            </div>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {selectedVehicles.length} / {sortedData.length} 선택됨
+            </span>
+          </div>
+
+          <div className="max-h-72 overflow-y-auto -mr-2 pr-2">
+            <ul className="space-y-1">
+              {sortedData.map((row) => (
+                <li key={row.vehicle_number}>
+                  <label className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+                    <Checkbox
+                      checked={selectedVehicles.includes(row.vehicle_number)}
+                      onCheckedChange={() => toggleVehicle(row.vehicle_number)}
+                    />
+                    <span className="text-sm text-gray-900 dark:text-white">
+                      {row.vehicle_number}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsExportOpen(false)}>
+              취소
+            </Button>
+            <Button onClick={handleDownloadCSV} disabled={selectedVehicles.length === 0}>
+              <Download className="w-4 h-4 mr-2" />
+              다운로드 실행
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
