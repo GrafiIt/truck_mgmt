@@ -26,6 +26,15 @@ export interface NotificationThreshold {
   air_tank_days_blue: number
   axle_bearing_days_red: number
   axle_bearing_days_blue: number
+  // 신규 항목: 파워오일, 에어드라이어, PTO조인트, 히터
+  power_oil_days_red: number
+  power_oil_days_blue: number
+  air_dryer_days_red: number
+  air_dryer_days_blue: number
+  pto_joint_days_red: number
+  pto_joint_days_blue: number
+  heater_days_red: number
+  heater_days_blue: number
   // 정기검사 알림 기준 (일)
   inspection_days_red: number
   inspection_days_blue: number
@@ -62,6 +71,15 @@ const DEFAULT_THRESHOLD: NotificationThreshold = {
   air_tank_days_blue: 1088,
   axle_bearing_days_red: 1460,
   axle_bearing_days_blue: 1453,
+  // 신규 항목 기본값 (red: 365, blue: 358)
+  power_oil_days_red: 365,
+  power_oil_days_blue: 358,
+  air_dryer_days_red: 365,
+  air_dryer_days_blue: 358,
+  pto_joint_days_red: 365,
+  pto_joint_days_blue: 358,
+  heater_days_red: 365,
+  heater_days_blue: 358,
   // 정기검사 기본값: 경고 150일 이상, 위험 180일 이상
   inspection_days_red: 180,
   inspection_days_blue: 150,
@@ -117,7 +135,14 @@ export function shouldHighlightWithThreshold(
       return daysDiff >= threshold.air_tank_days_red
     case "축베어링":
       return daysDiff >= threshold.axle_bearing_days_red
+    case "파워오일":
+      return daysDiff >= threshold.power_oil_days_red
+    case "에어드라이어":
+      return daysDiff >= threshold.air_dryer_days_red
+    case "PTO조인트":
+      return daysDiff >= threshold.pto_joint_days_red
     case "히터":
+      return daysDiff >= threshold.heater_days_red
     case "기타":
       return daysDiff >= 365
     case "정기검사":
@@ -171,7 +196,14 @@ export function shouldWarnWithThreshold(
       return daysDiff >= threshold.air_tank_days_blue && daysDiff < threshold.air_tank_days_red
     case "축베어링":
       return daysDiff >= threshold.axle_bearing_days_blue && daysDiff < threshold.axle_bearing_days_red
+    case "파워오일":
+      return daysDiff >= threshold.power_oil_days_blue && daysDiff < threshold.power_oil_days_red
+    case "에어드라이어":
+      return daysDiff >= threshold.air_dryer_days_blue && daysDiff < threshold.air_dryer_days_red
+    case "PTO조인트":
+      return daysDiff >= threshold.pto_joint_days_blue && daysDiff < threshold.pto_joint_days_red
     case "히터":
+      return daysDiff >= threshold.heater_days_blue && daysDiff < threshold.heater_days_red
     case "기타":
       return daysDiff >= 358 && daysDiff < 365
     case "정기검사":

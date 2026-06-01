@@ -39,6 +39,15 @@ interface NotificationThreshold {
   air_tank_days_blue: number
   axle_bearing_days_red: number
   axle_bearing_days_blue: number
+  // 신규 항목: 파워오일, 에어드라이어, PTO조인트, 히터
+  power_oil_days_red: number
+  power_oil_days_blue: number
+  air_dryer_days_red: number
+  air_dryer_days_blue: number
+  pto_joint_days_red: number
+  pto_joint_days_blue: number
+  heater_days_red: number
+  heater_days_blue: number
   // 정기검사 알림 기준 (일)
   inspection_days_red: number
   inspection_days_blue: number
@@ -64,6 +73,7 @@ export default function NotificationThresholdForm({ vehicleType, threshold }: Pr
   const MAINTENANCE_ITEM_NAMES = [
     "구리스", "엔진오일", "미션오일", "경유필터", "데후오일",
     "타이어", "드라이필터", "수분분리기", "라이닝", "배터리", "에어탱크", "축베어링",
+    "파워오일", "에어드라이어", "PTO조인트", "히터",
   ]
 
   const toggleDisabledWarning = (itemName: string) => {
@@ -98,6 +108,10 @@ export default function NotificationThresholdForm({ vehicleType, threshold }: Pr
       { red: "battery_days_red", blue: "battery_days_blue", name: "배터리" },
       { red: "air_tank_days_red", blue: "air_tank_days_blue", name: "에어탱크" },
       { red: "axle_bearing_days_red", blue: "axle_bearing_days_blue", name: "축베어링" },
+      { red: "power_oil_days_red", blue: "power_oil_days_blue", name: "파워오일" },
+      { red: "air_dryer_days_red", blue: "air_dryer_days_blue", name: "에어드라이어" },
+      { red: "pto_joint_days_red", blue: "pto_joint_days_blue", name: "PTO조인트" },
+      { red: "heater_days_red", blue: "heater_days_blue", name: "히터" },
       { red: "inspection_days_red", blue: "inspection_days_blue", name: "정기검사" },
     ]
 
@@ -234,6 +248,34 @@ export default function NotificationThresholdForm({ vehicleType, threshold }: Pr
       fields: [
         { name: "axle_bearing_days_red", label: "빨간색 표시 기준 (일)", type: "days" },
         { name: "axle_bearing_days_blue", label: "파란색 표시 기준 (일)", type: "days" },
+      ],
+    },
+    {
+      title: "파워오일 (Power Oil)",
+      fields: [
+        { name: "power_oil_days_red", label: "빨간색 표시 기준 (일)", type: "days" },
+        { name: "power_oil_days_blue", label: "파란색 표시 기준 (일)", type: "days" },
+      ],
+    },
+    {
+      title: "에어드라이어 (Air Dryer)",
+      fields: [
+        { name: "air_dryer_days_red", label: "빨간색 표시 기준 (일)", type: "days" },
+        { name: "air_dryer_days_blue", label: "파란색 표시 기준 (일)", type: "days" },
+      ],
+    },
+    {
+      title: "PTO조인트 (PTO Joint)",
+      fields: [
+        { name: "pto_joint_days_red", label: "빨간색 표시 기준 (일)", type: "days" },
+        { name: "pto_joint_days_blue", label: "파란색 표시 기준 (일)", type: "days" },
+      ],
+    },
+    {
+      title: "히터 (Heater)",
+      fields: [
+        { name: "heater_days_red", label: "빨간색 표시 기준 (일)", type: "days" },
+        { name: "heater_days_blue", label: "파란색 표시 기준 (일)", type: "days" },
       ],
     },
   ]
