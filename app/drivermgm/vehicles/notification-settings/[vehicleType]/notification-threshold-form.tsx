@@ -138,7 +138,7 @@ export default function NotificationThresholdForm({ vehicleType, threshold }: Pr
     setError("")
     setSuccess(false)
 
-    // 유효성 검사: 파란색 기준이 빨간색 기준보다 크거나 같으면 안됨
+    // 유효성 검사: 파란색 기준이 빨간색 기준보다 크면 안됨 (같은 값은 허용)
     const validationErrors: string[] = []
 
     // 일(days) 기준 검사 - 16개 항목 전체
@@ -188,15 +188,16 @@ export default function NotificationThresholdForm({ vehicleType, threshold }: Pr
       const redValue = formData[field.red as keyof NotificationThreshold] as number
       const blueValue = formData[field.blue as keyof NotificationThreshold] as number
 
-      if (blueValue >= redValue) {
+      if (blueValue > redValue) {
         validationErrors.push(`${field.name}`)
       }
     }
 
     if (validationErrors.length > 0) {
       setError(
-        `파란색 표시 기준은 빨간색 표시 기준보다 크거나 같을 수 없습니다!\n문제 항목: ${validationErrors.join(", ")}`
+        `파란색 표시 기준은 빨간색 표시 기준보다 클 수 없습니다!\n문제 항목: ${validationErrors.join(", ")}`
       )
+      window.scrollTo({ top: 0, behavior: "smooth" })
       setIsSubmitting(false)
       return
     }
@@ -218,6 +219,7 @@ export default function NotificationThresholdForm({ vehicleType, threshold }: Pr
       }, 1500)
     } else {
       setError(result.error || "업데이트에 실패했습니다.")
+      window.scrollTo({ top: 0, behavior: "smooth" })
     }
 
     setIsSubmitting(false)
