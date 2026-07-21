@@ -796,11 +796,17 @@ export async function deleteMaintenanceRecord(recordId: string | number, recordT
     const schemaTableName = recordType === "inspection" ? inspectionTable : fieldHistoryTable
 
     // 먼저 레코드 정보를 가져옴 (vehicle_id와 field_name 필요)
-    const { data: existingRecord } = await supabase
+    // inspection_history 테이블에는 field_name 컬럼이 없으므로 recordType에 따라 select 컬럼을 분기
+    const selectColumns = recordType === "inspection" ? "id, vehicle_id" : "id, vehicle_id, field_name"
+    const { data: existingRecord, error: selectError } = await supabase
       .from(schemaTableName)
-      .select("id, vehicle_id, field_name")
+      .select(selectColumns)
       .eq("id", recordId)
       .maybeSingle()
+
+    if (selectError) {
+      console.error("[v0] Error fetching record before delete:", selectError)
+    }
 
     if (!existingRecord) {
       // 이미 삭제된 경우도 성공으로 처리
