@@ -780,6 +780,97 @@ export async function checkVehicleOrderDuplicate(order: number, excludeVehicleNu
   }
 }
 
+export async function deleteMaintenanceRecord(recordId: string | number, recordType: string) {
+  try {
+    const supabase = await createAdminClient()
+
+    if (!supabase || typeof supabase.from !== "function") {
+      console.error("[v0] Invalid Supabase client returned")
+      return { success: false, error: "데이터베이스 연결 오류" }
+    }
+
+    const fieldHistoryTable = await getTableName("vehicle_field_history")
+    const inspectionTable = await getTableName("inspection_history")
+    const vehiclesTable = await getTableName("vehicles")
+
+    const schemaTableName = recordType === "inspection" ? inspectionTable : fieldHistoryTable
+
+    // 먼저 레코드 정보를 가져옴 (vehicle_id와 field_name 필요)
+    const { data: existingRecord } = await supabase
+      .from(schemaTableName)
+      .select("id, vehicle_id, field_name")
+      .eq("id", recordId)
+      .maybeSingle()
+
+    if (!existingRecord) {
+      // 이미 삭제된 경우도 성공으로 처리
+      return { success: true }
+    }
+
+    const vehicleId = existingRecord.vehicle_id
+    const fieldName = recordType === "inspection" ? "inspection" : (existingRecord.field_name || recordType)
+
+    // 삭제 실행
+    const { error: deleteError } = await supabase
+      .from(schemaTableName)
+      .delete()
+      .eq("id", recordId)
+
+    if (deleteError) {
+      console.error("[v0] Error deleting record:", deleteError)
+      return { success: false, error: "삭제 중 오류가 발생했습니다." }
+    }
+
+    // 차량 테이블의 최종 저장값 동기화 (삭제 후 남은 이력 중 최신값으로 업데이트)
+    if (recordType === "inspection") {
+      const { data: latestInspection } = await supabase
+        .from(inspectionTable)
+        .select("*")
+        .eq("vehicle_id", vehicleId)
+        .order("inspection_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      await supabase
+        .from(vehiclesTable)
+        .update({
+          last_inspection_date: latestInspection?.inspection_date || null,
+          inspection_name: latestInspection?.inspection_name || null,
+          inspection_result: latestInspection?.inspection_result || null,
+          inspection_notes: latestInspection?.inspection_notes || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", vehicleId)
+    } else if (fieldName !== "refueling" && fieldName !== "monthly_mileage" && fieldName !== "others") {
+      // 일반 정비항목: 가장 최신 레코드로 차량 테이블 동기화
+      const { data: latestRecord } = await supabase
+        .from(fieldHistoryTable)
+        .select("*")
+        .eq("vehicle_id", vehicleId)
+        .eq("field_name", fieldName)
+        .order("date_value", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      await supabase
+        .from(vehiclesTable)
+        .update({
+          [`${fieldName}_date`]: latestRecord?.date_value || null,
+          [`${fieldName}_mileage`]: latestRecord?.mileage_value || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", vehicleId)
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("[v0] Error in deleteMaintenanceRecord:", error)
+    return { success: false, error: "정비 이력 삭제 중 오류가 발생했습니다." }
+  }
+}
+
 export async function addInspectionRecord(formData: FormData) {
   try {
     const supabase = await createAdminClient()
