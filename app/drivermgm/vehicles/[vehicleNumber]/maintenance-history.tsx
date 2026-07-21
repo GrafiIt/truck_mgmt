@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { formatNumberWithCommas, parseNumberFromFormatted } from "@/lib/number-formatter"
+import { deleteMaintenanceRecord } from "../actions"
 
 const VEHICLE_FIELDS = [
   { value: "all", label: "전체", type: "all" },
@@ -359,7 +360,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
       filtered = filtered.filter((record) => record.field_name === filterField)
     }
 
-    // 내용 검색 (컬럼이 선택된 경우에만)
+    // 내용 검색 (컬럼이 선택된 경우��만)
     if (contentSearchQuery && filterField !== "all") {
       const query = contentSearchQuery.toLowerCase()
       filtered = filtered.filter((record) => {
@@ -617,28 +618,16 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
     setDeleteError("")
 
     try {
-      const formData = new FormData()
-      formData.append("recordId", recordToDelete.id.toString())
-      formData.append("recordType", recordToDelete.field_name || "")
-
-      const response = await fetch("/api/drivermgm/delete-maintenance-record", {
-        method: "POST",
-        body: formData,
-      })
-
-      const result = await response.json()
-      console.log("[v0] Delete response:", result)
+      const result = await deleteMaintenanceRecord(
+        recordToDelete.id,
+        recordToDelete.type === "inspection" ? "inspection" : (recordToDelete.field_name || "")
+      )
 
       if (result.success) {
-        console.log("[v0] Delete successful, reloading page...")
         setDeleteModalOpen(false)
         setRecordToDelete(null)
-        // 약간의 지연 후 새로고침하여 모달이 닫히는 것을 확인
-        setTimeout(() => {
-          window.location.reload()
-        }, 100)
+        router.refresh()
       } else {
-        console.log("[v0] Delete failed:", result.error)
         setDeleteError(result.error || "삭제에 실패했습니다.")
       }
     } catch (error) {
