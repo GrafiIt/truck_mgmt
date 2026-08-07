@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useMemo, useEffect, useCallback } from "react"
+import { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Search, Trash2, Edit2, Download } from "lucide-react"
+import { Plus, Search, Trash2, Edit2, Download, Camera, X } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Dialog,
@@ -22,6 +22,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { formatNumberWithCommas, parseNumberFromFormatted } from "@/lib/number-formatter"
 import { deleteMaintenanceRecord } from "../actions"
+import { createClient } from "@/lib/supabase/client"
 
 const VEHICLE_FIELDS = [
   { value: "all", label: "전체", type: "all" },
@@ -71,6 +72,7 @@ interface MaintenanceRecord {
   mileage_month?: string | null
   month_start_mileage?: number | null
   month_end_mileage?: number | null
+  receipt_image_url?: string | null // 영수증/명세서 이미지 URL
 }
 
 interface MaintenanceHistoryProps {
@@ -136,6 +138,102 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  // 영수증/명세서 첨부 관련 상태 (선택 사항)
+  const [receiptBlob, setReceiptBlob] = useState<Blob | null>(null)
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false)
+  const receiptInputRef = useRef<HTMLInputElement>(null)
+
+  // Canvas API를 이용한 이미지 압축 (서버 용량 절약: 최대 800px, quality 0.6 JPEG)
+  const resizeImage = useCallback((file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const MAX_SIZE = 800
+      const QUALITY = 0.6
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const img = new Image()
+        img.onload = () => {
+          let { width, height } = img
+
+          // 긴 변을 MAX_SIZE 이하로 비율 유지하며 축소
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height = Math.round((height * MAX_SIZE) / width)
+              width = MAX_SIZE
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width = Math.round((width * MAX_SIZE) / height)
+              height = MAX_SIZE
+            }
+          }
+
+          const canvas = document.createElement("canvas")
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext("2d")
+          if (!ctx) {
+            reject(new Error("Canvas 컨텍스트를 생성할 수 없습니다."))
+            return
+          }
+          // 투명 배경을 흰색으로 채워 JPEG 변환 시 검게 나오지 않도록 처리
+          ctx.fillStyle = "#ffffff"
+          ctx.fillRect(0, 0, width, height)
+          ctx.drawImage(img, 0, 0, width, height)
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                resolve(blob)
+              } else {
+                reject(new Error("이미지 압축에 실패했습니다."))
+              }
+            },
+            "image/jpeg",
+            QUALITY,
+          )
+        }
+        img.onerror = () => reject(new Error("이미지를 불러올 수 없습니다."))
+        img.src = event.target?.result as string
+      }
+      reader.onerror = () => reject(new Error("파일을 읽을 수 없습니다."))
+      reader.readAsDataURL(file)
+    })
+  }, [])
+
+  const handleReceiptChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+
+      try {
+        const compressed = await resizeImage(file)
+        console.log("[v0] Receipt compressed size (KB):", (compressed.size / 1024).toFixed(1))
+
+        // 이전 미리보기 URL 정리
+        if (receiptPreview) URL.revokeObjectURL(receiptPreview)
+
+        setReceiptBlob(compressed)
+        setReceiptPreview(URL.createObjectURL(compressed))
+      } catch (err) {
+        console.error("[v0] Receipt compression error:", err)
+        alert("이미지 처리 중 오류가 발생했습니다. 다른 사진을 선택해주세요.")
+      } finally {
+        // 같은 파일을 다시 선택할 수 있도록 input 초기화
+        if (receiptInputRef.current) receiptInputRef.current.value = ""
+      }
+    },
+    [resizeImage, receiptPreview],
+  )
+
+  const handleRemoveReceipt = useCallback(() => {
+    if (receiptPreview) URL.revokeObjectURL(receiptPreview)
+    setReceiptBlob(null)
+    setReceiptPreview(null)
+    if (receiptInputRef.current) receiptInputRef.current.value = ""
+  }, [receiptPreview])
 
   const filteredFields = useMemo(() => {
     if (!searchQuery) return VEHICLE_FIELDS
@@ -256,6 +354,39 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
     })
 
     try {
+      // 영수증/명세서 이미지가 첨부된 경우 Supabase Storage(equipment-receipts)에 업로드
+      if (receiptBlob) {
+        setIsUploadingReceipt(true)
+        try {
+          const supabase = createClient()
+          const fileName = `receipt_${vehicleId}_${Date.now()}.jpg`
+          const filePath = `${vehicleId}/${fileName}`
+
+          const { error: uploadError } = await supabase.storage
+            .from("equipment-receipts")
+            .upload(filePath, receiptBlob, {
+              contentType: "image/jpeg",
+              upsert: false,
+            })
+
+          if (uploadError) {
+            console.error("[v0] Receipt upload error:", uploadError)
+            alert(`영수증 이미지 업로드 중 오류가 발생했습니다: ${uploadError.message}`)
+            setIsUploadingReceipt(false)
+            setIsSaving(false)
+            return
+          }
+
+          const { data: publicUrlData } = supabase.storage.from("equipment-receipts").getPublicUrl(filePath)
+          const receiptUrl = publicUrlData.publicUrl
+          console.log("[v0] Receipt uploaded, public URL:", receiptUrl)
+
+          formData.append("receipt_image_url", receiptUrl)
+        } finally {
+          setIsUploadingReceipt(false)
+        }
+      }
+
       let result
       if (selectedField === "monthly_mileage") {
         result = await fetch("/api/drivermgm/add-monthly-mileage-record", {
@@ -331,6 +462,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
         setOthersMileage("")
         setCostValue("")
         setFuelCostValue("")
+        handleRemoveReceipt()
 
         setTimeout(() => {
           router.refresh()
@@ -758,7 +890,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                           <Textarea
                             id="maintenance_notes_refueling"
                             name="maintenance_notes"
-                            placeholder="정비 관련 기타 사항을 입력하세요..."
+                            placeholder="��비 관련 기타 사항을 입력하세요..."
                             rows={3}
                           />
                         </div>
@@ -1061,9 +1193,69 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                   </>
                 )}
               </div>
+
+              {selectedField && (
+                <div className="mt-4 space-y-2 rounded-lg border border-dashed p-4">
+                  <Label className="flex items-center gap-2">
+                    <Camera className="h-4 w-4" />
+                    영수증 / 명세서 첨부 <span className="text-xs text-muted-foreground">(선택)</span>
+                  </Label>
+
+                  <input
+                    ref={receiptInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={handleReceiptChange}
+                  />
+
+                  {receiptPreview ? (
+                    <div className="flex items-start gap-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={receiptPreview || "/placeholder.svg"}
+                        alt="영수증 미리보기"
+                        className="h-28 w-28 rounded-md border object-cover"
+                      />
+                      <div className="flex flex-col gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          {receiptBlob ? `압축 완료 (약 ${(receiptBlob.size / 1024).toFixed(0)} KB)` : ""}
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => receiptInputRef.current?.click()}
+                          >
+                            <Camera className="mr-1 h-4 w-4" />
+                            다시 선택
+                          </Button>
+                          <Button type="button" variant="ghost" size="sm" onClick={handleRemoveReceipt}>
+                            <X className="mr-1 h-4 w-4" />
+                            삭제
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => receiptInputRef.current?.click()}
+                      className="w-full sm:w-auto"
+                    >
+                      <Camera className="mr-2 h-4 w-4" />
+                      사진 선택 / 촬영
+                    </Button>
+                  )}
+                </div>
+              )}
+
               <div className="flex justify-end">
-                <Button type="submit" disabled={isSaving || !selectedField}>
-                  {isSaving ? "저장 중..." : "저장"}
+                <Button type="submit" disabled={isSaving || isUploadingReceipt || !selectedField}>
+                  {isUploadingReceipt ? "영수증 업로드 중..." : isSaving ? "저장 중..." : "저장"}
                 </Button>
               </div>
             </form>
