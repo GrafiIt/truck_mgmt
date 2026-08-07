@@ -448,7 +448,7 @@ export async function createVehicle(formData: FormData) {
 
 /**
  * [생성/수정] 회사 전용 테이블 vehicle_field_history_${companyCode}에 전월주행거리를 기록하고,
- * vehicles_${companyCode}의 전���주행거리를 갱신한다.
+ * vehicles_${companyCode}의 전�����주행거리를 갱신한다.
  */
 export async function addMonthlyMileageRecord(formData: FormData) {
   try {
@@ -499,6 +499,8 @@ export async function addMonthlyMileageRecord(formData: FormData) {
       monthlyDistance = monthEndMileage - monthStartMileage
     }
 
+    const receiptImageUrl = (formData.get("receipt_image_url") as string) || null
+
     // 회사 전용 테이블(vehicle_field_history_${companyCode})에 삽입
     const fieldHistoryTable = getTableName("vehicle_field_history", companyCode)
     const { error: historyError } = await supabase.schema("drivermgm").from(fieldHistoryTable).insert({
@@ -510,6 +512,7 @@ export async function addMonthlyMileageRecord(formData: FormData) {
       mileage_value: monthlyDistance,
       text_value: monthStartMileage !== null ? monthStartMileage.toString() : null,
       text_value2: monthEndMileage !== null ? monthEndMileage.toString() : null,
+      receipt_image_url: receiptImageUrl,
     })
 
     if (historyError) {
@@ -570,6 +573,7 @@ export async function addVehicleFieldUpdate(formData: FormData) {
     const repairShop = (formData.get("repair_shop") as string) || null
     const cost = formData.get("cost") ? Number.parseInt(formData.get("cost") as string) : null
     const maintenanceNotes = (formData.get("maintenance_notes") as string) || null
+    const receiptImageUrl = (formData.get("receipt_image_url") as string) || null
 
     console.log("[v0] addVehicleFieldUpdate:", {
       vehicleId,
@@ -627,6 +631,7 @@ export async function addVehicleFieldUpdate(formData: FormData) {
       text_value2: maintenanceNotes,
       repair_shop: repairShop,
       cost: cost,
+      receipt_image_url: receiptImageUrl,
     })
 
     if (historyError) {
@@ -755,6 +760,7 @@ export async function addRefuelingRecord(formData: FormData) {
     const fuelCost = Number.parseInt(formData.get("fuel_cost") as string)
     const repairShop = (formData.get("repair_shop") as string) || null
     const maintenanceNotes = (formData.get("maintenance_notes") as string) || null
+    const receiptImageUrl = (formData.get("receipt_image_url") as string) || null
 
     console.log("[v0] Adding refueling record:", {
       vehicleId,
@@ -779,6 +785,7 @@ export async function addRefuelingRecord(formData: FormData) {
       fuel_amount: fuelAmount,
       fuel_cost: fuelCost,
       maintenance_date: maintenanceDate,
+      receipt_image_url: receiptImageUrl,
     })
 
     if (refuelError) {
@@ -827,6 +834,7 @@ export async function addRefuelingRecord(formData: FormData) {
       text_value: `${fuelAmount}L / ${fuelCost.toLocaleString()}원`,
       repair_shop: repairShop,
       text_value2: maintenanceNotes,
+      receipt_image_url: receiptImageUrl,
     })
 
     if (historyError) {
@@ -1007,6 +1015,7 @@ export async function addInspectionRecord(formData: FormData) {
     const inspectionNotes = (formData.get("inspection_notes") as string) || null
     const email1 = (formData.get("email_1") as string) || null
     const email2 = (formData.get("email_2") as string) || null
+    const receiptImageUrl = (formData.get("receipt_image_url") as string) || null
 
     console.log("[v0] Adding inspection record:", {
       vehicleId,
@@ -1032,6 +1041,7 @@ export async function addInspectionRecord(formData: FormData) {
       maintenance_date: maintenanceDate,
       email_1: email1,
       email_2: email2,
+      receipt_image_url: receiptImageUrl,
     })
 
     if (inspectionError) {
@@ -1057,7 +1067,7 @@ export async function addInspectionRecord(formData: FormData) {
       return { success: false, error: updateError.message }
     }
 
-    // 정기��검은 inspection_history 테이블에만 저장 (vehicle_field_history에는 저장하지 않음)
+    // ��기��검은 inspection_history 테이블에만 저장 (vehicle_field_history에는 저장하지 않음)
     // 중복 저장을 방지하여 리스트에 2줄로 나타나지 않도록 함
 
     return { success: true }
@@ -1106,6 +1116,7 @@ export async function updateMaintenanceRecord(payload: any) {
       if (payload.email_2 !== undefined) updateData.email_2 = payload.email_2 || null
       if (payload.repair_shop !== undefined) updateData.repair_shop = payload.repair_shop || null
       if (payload.cost !== undefined) updateData.cost = payload.cost ?? null
+      if ("receipt_image_url" in payload) updateData.receipt_image_url = payload.receipt_image_url ?? null
 
       const { error: updateError } = await supabase
         .schema("drivermgm")
@@ -1157,6 +1168,7 @@ export async function updateMaintenanceRecord(payload: any) {
     if (payload.cost !== undefined) updateData.cost = payload.cost ?? null
     if (payload.text_value !== undefined) updateData.text_value = payload.text_value || null
     if (payload.text_value2 !== undefined) updateData.text_value2 = payload.text_value2 || null
+    if ("receipt_image_url" in payload) updateData.receipt_image_url = payload.receipt_image_url ?? null
 
     // 주유 전용: text_value에 "주유량L / 주유비원" 형식으로 반영
     if (field_name === "refueling") {
