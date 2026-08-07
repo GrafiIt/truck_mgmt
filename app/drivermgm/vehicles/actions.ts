@@ -1,13 +1,49 @@
 "use server"
 
 import { createAdminClient } from "@/lib/supabase/server"
-import { getTableName } from "@/lib/table-utils"
 import { verifyAdminCredentials as verifyAdmin } from "@/lib/vehicle-auth"
+import { cookies } from "next/headers"
 
 export const verifyAdminCredentials = verifyAdmin
 
+/**
+ * [요구사항 1] 쿠키에서 회사 코드(company_code) 추출 공통 함수
+ * - next/headers의 cookies()를 사용하여 현재 접속한 사용자의 company_code 값을 읽어온다.
+ * - 쿠키에 company_code가 없으면 null을 반환하고, 각 호출부에서 철저히 예외 처리한다.
+ */
+async function getCompanyCode(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies()
+    const companyCodeCookie = cookieStore.get("company_code")
+
+    if (!companyCodeCookie || !companyCodeCookie.value) {
+      console.error("[v0] company_code 쿠키를 찾을 수 없습니다.")
+      return null
+    }
+
+    return companyCodeCookie.value
+  } catch (error) {
+    console.error("[v0] company_code 쿠키 추출 중 오류:", error)
+    return null
+  }
+}
+
+/**
+ * [요구사항 2] 조회(GET) - 동적 View 타겟
+ * public.vehicles_${companyCode} 뷰에서 차량 목록을 조회한다.
+ */
 export async function getVehicles(companyCodeParam?: string) {
   const MAX_RETRIES = 5
+
+  // [요구사항 1] 파라미터 우선, 없으면 쿠키에서 회사 코드 추출
+  const companyCode = companyCodeParam || (await getCompanyCode())
+  if (!companyCode) {
+    console.error("[v0] getVehicles: 회사 코드가 없어 빈 배열을 반환합니다.")
+    return []
+  }
+
+  // [요구사항 2] 동적 View 이름 생성 (public 스키마의 회사 전용 뷰)
+  const viewName = `vehicles_${companyCode}`
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -22,24 +58,7 @@ export async function getVehicles(companyCodeParam?: string) {
         return []
       }
 
-      // 파라미터로 전달된 companyCode 사용, 없으면 쿠키에서 가져오기
-      let tableName: string
-      if (companyCodeParam) {
-        tableName = `vehicles_${companyCodeParam}`
-      } else {
-        tableName = await getTableName("vehicles")
-      }
-      
-      // vehicle_order 컬럼이 없는 기존 테이블을 위해 자동 마이그레이션
-      try {
-        await supabase.rpc('exec_sql', {
-          sql_query: `ALTER TABLE drivermgm.${tableName} ADD COLUMN IF NOT EXISTS vehicle_order INTEGER`
-        })
-      } catch (e) {
-        // 마이그레이션 실패 시 무시 (권한 문제 등)
-      }
-
-      const { data, error } = await supabase.from(tableName).select("*").order("vehicle_number", { ascending: true })
+      const { data, error } = await supabase.from(viewName).select("*").order("vehicle_number", { ascending: true })
 
       if (error) {
         console.error(`[v0] getVehicles: Database error on attempt ${attempt}:`, {
@@ -56,27 +75,6 @@ export async function getVehicles(companyCodeParam?: string) {
         return []
       }
 
-      // vehicle_type 및 vehicle_order를 각 차량별로 가져오기 (PostgREST 스키마 캐시 우회)
-      if (data && data.length > 0) {
-        try {
-          const vehicleNumbers = data.map(v => `'${v.vehicle_number.replace(/'/g, "''")}'`).join(',')
-          const { data: extraData } = await supabase.rpc('query_sql', {
-            sql_query: `SELECT vehicle_number, vehicle_type, vehicle_order FROM drivermgm.${tableName} WHERE vehicle_number IN (${vehicleNumbers})`
-          })
-          
-          if (extraData && Array.isArray(extraData)) {
-            const extraMap = new Map(extraData.map((item: any) => [item.vehicle_number, item]))
-            data.forEach((vehicle: any) => {
-              const extra = extraMap.get(vehicle.vehicle_number)
-              vehicle.vehicle_type = extra?.vehicle_type || null
-              vehicle.vehicle_order = extra?.vehicle_order ?? null
-            })
-          }
-        } catch (e) {
-          console.error("[v0] getVehicles: Failed to fetch extra column data", e)
-        }
-      }
-
       // vehicle_order 기준 오름차순 정렬 (null은 맨 뒤)
       if (data) {
         data.sort((a: any, b: any) => {
@@ -86,7 +84,6 @@ export async function getVehicles(companyCodeParam?: string) {
         })
       }
 
-      // previous_month_mileage는 이제 트리거로 vehicles 테이블에 직접 저장됨
       return data || []
     } catch (error: any) {
       console.error(`[v0] getVehicles: Network/fetch error on attempt ${attempt}:`, {
@@ -110,8 +107,19 @@ export async function getVehicles(companyCodeParam?: string) {
   return []
 }
 
+/**
+ * [요구사항 2] 조회(GET) - 동적 View 타겟
+ * public.vehicles_${companyCode} 뷰에서 차량번호로 단일 차량을 조회한다.
+ */
 export async function getVehicleByNumber(vehicleNumber: string) {
   try {
+    // [요구사항 1] 쿠키에서 회사 코드 추출
+    const companyCode = await getCompanyCode()
+    if (!companyCode) {
+      console.error("[v0] getVehicleByNumber: 회사 코드가 없습니다.")
+      return null
+    }
+
     const supabase = await createAdminClient()
 
     if (!supabase || typeof supabase.from !== "function") {
@@ -119,27 +127,13 @@ export async function getVehicleByNumber(vehicleNumber: string) {
       return null
     }
 
-    const tableName = await getTableName("vehicles")
-    const { data, error } = await supabase.from(tableName).select("*").eq("vehicle_number", vehicleNumber).single()
+    // [요구사항 2] 동적 View 이름 생성
+    const viewName = `vehicles_${companyCode}`
+    const { data, error } = await supabase.from(viewName).select("*").eq("vehicle_number", vehicleNumber).single()
 
     if (error) {
       console.error("[v0] Error fetching vehicle:", error)
       return null
-    }
-
-    // vehicle_type, vehicle_order를 직접 SQL로 가져오기 (PostgREST 스키마 캐시 우회)
-    if (data) {
-      try {
-        const { data: sqlResult } = await supabase.rpc('query_sql', {
-          sql_query: `SELECT vehicle_type, vehicle_order FROM drivermgm.${tableName} WHERE vehicle_number = '${vehicleNumber.replace(/'/g, "''")}'`
-        })
-        if (sqlResult && Array.isArray(sqlResult) && sqlResult.length > 0) {
-          data.vehicle_type = sqlResult[0].vehicle_type
-          data.vehicle_order = sqlResult[0].vehicle_order ?? null
-        }
-      } catch (e) {
-        // 조회 실패 시 무시
-      }
     }
 
     return data
@@ -149,15 +143,28 @@ export async function getVehicleByNumber(vehicleNumber: string) {
   }
 }
 
+/**
+ * [요구사항 2] 조회(GET) - 동적 View 타겟
+ * public.vehicle_field_history_${companyCode} 및 public.inspection_history_${companyCode}
+ * 뷰에서 정비 이력을 조회한다.
+ */
 export async function getMaintenanceRecords(vehicleId: number) {
   try {
+    // [요구사항 1] 쿠키에서 회사 코드 추출
+    const companyCode = await getCompanyCode()
+    if (!companyCode) {
+      console.error("[v0] getMaintenanceRecords: 회사 코드가 없습니다.")
+      return []
+    }
+
     const supabase = await createAdminClient()
 
-    const fieldHistoryTable = await getTableName("vehicle_field_history")
-    const inspectionTable = await getTableName("inspection_history")
+    // [요구사항 2] 동적 View 이름 생성
+    const fieldHistoryView = `vehicle_field_history_${companyCode}`
+    const inspectionView = `inspection_history_${companyCode}`
 
     const { data: fieldHistory, error: fieldError } = await supabase
-      .from(fieldHistoryTable)
+      .from(fieldHistoryView)
       .select("*")
       .eq("vehicle_id", vehicleId)
       .neq("field_name", "inspection") // 정기점검은 제외 (inspection_history에서만 조회)
@@ -166,7 +173,7 @@ export async function getMaintenanceRecords(vehicleId: number) {
     if (fieldError) throw fieldError
 
     const { data: inspectionHistory, error: inspectionError } = await supabase
-      .from(inspectionTable)
+      .from(inspectionView)
       .select("*")
       .eq("vehicle_id", vehicleId)
       .order("created_at", { ascending: false })
@@ -236,8 +243,17 @@ export async function getMaintenanceRecords(vehicleId: number) {
   }
 }
 
+/**
+ * [요구사항 3] 생성(Write) - 원본 테이블 타겟 + company_code 방어
+ */
 export async function addMaintenanceRecord(formData: FormData) {
   try {
+    // [요구사항 1] 쿠키에서 회사 코드 추출
+    const companyCode = await getCompanyCode()
+    if (!companyCode) {
+      return { success: false, error: "회사 코드를 찾을 수 없습니다. 다시 로그인해주세요." }
+    }
+
     const supabase = await createAdminClient()
 
     if (!supabase || typeof supabase.from !== "function") {
@@ -254,17 +270,21 @@ export async function addMaintenanceRecord(formData: FormData) {
     const cost = Number.parseInt(formData.get("cost") as string) || 0
     const notes = formData.get("notes") as string
 
-    const maintenanceTable = await getTableName("maintenance_records")
-    const { error } = await supabase.from(maintenanceTable).insert({
-      vehicle_id: vehicleId,
-      maintenance_date: maintenanceDate,
-      driver_name: driverName,
-      mileage,
-      description,
-      repair_shop: repairShop,
-      cost,
-      notes,
-    })
+    // [요구사항 3] 원본 테이블(drivermgm.maintenance_records)에 직접 삽입 + company_code
+    const { error } = await supabase
+      .schema("drivermgm")
+      .from("maintenance_records")
+      .insert({
+        vehicle_id: vehicleId,
+        maintenance_date: maintenanceDate,
+        driver_name: driverName,
+        mileage,
+        description,
+        repair_shop: repairShop,
+        cost,
+        notes,
+        company_code: companyCode,
+      })
 
     if (error) {
       console.error("[v0] Error adding maintenance record:", error)
@@ -278,8 +298,17 @@ export async function addMaintenanceRecord(formData: FormData) {
   }
 }
 
+/**
+ * [요구사항 3] 수정(Write) - 원본 테이블 타겟 + company_code 방어
+ */
 export async function updateVehicle(vehicleNumber: string, updates: any) {
   try {
+    // [요구사항 1] 쿠키에서 회사 코드 추출
+    const companyCode = await getCompanyCode()
+    if (!companyCode) {
+      return { success: false, error: "회사 코드를 찾을 수 없습니다. 다시 로그인해주세요." }
+    }
+
     const supabase = await createAdminClient()
 
     if (!supabase || typeof supabase.from !== "function") {
@@ -287,14 +316,16 @@ export async function updateVehicle(vehicleNumber: string, updates: any) {
       return { success: false, error: "데이터베이스 연결 오류" }
     }
 
-    const tableName = await getTableName("vehicles")
+    // [요구사항 3] 원본 테이블(drivermgm.vehicles)을 대상으로 수정 + company_code 필터링
     const { error } = await supabase
-      .from(tableName)
+      .schema("drivermgm")
+      .from("vehicles")
       .update({
         ...updates,
         updated_at: new Date().toISOString(),
       })
       .eq("vehicle_number", vehicleNumber)
+      .eq("company_code", companyCode)
 
     if (error) {
       console.error("[v0] Error updating vehicle:", error)
@@ -308,8 +339,17 @@ export async function updateVehicle(vehicleNumber: string, updates: any) {
   }
 }
 
+/**
+ * [요구사항 3] 생성(Write) - 원본 테이블 타겟 + company_code 방어
+ */
 export async function createVehicle(formData: FormData) {
   try {
+    // [요구사항 1] 쿠키에서 회사 코드 추출
+    const companyCode = await getCompanyCode()
+    if (!companyCode) {
+      return { success: false, error: "회사 코드를 찾을 수 없습니다. 다시 로그인해주세요." }
+    }
+
     const supabase = await createAdminClient()
 
     if (!supabase || typeof supabase.from !== "function") {
@@ -322,7 +362,7 @@ export async function createVehicle(formData: FormData) {
       driver_name: formData.get("driver_name") as string,
       vehicle_number: formData.get("vehicle_number") as string,
       manufacturer: formData.get("manufacturer") as string,
-      release_date: formData.get("release_date") as string,
+      release_date: (formData.get("release_date") as string) || null,
       vehicle_age: formData.get("vehicle_age") ? Number.parseFloat(formData.get("vehicle_age") as string) : null,
       total_mileage: formData.get("total_mileage") ? Number.parseInt(formData.get("total_mileage") as string) : 0,
       last_inspection_date: (formData.get("last_inspection_date") as string) || null,
@@ -365,52 +405,38 @@ export async function createVehicle(formData: FormData) {
       }
     }
 
-    // vehicle_type은 PostgREST 캐시 이슈로 별도 처리
     const vehicleType = (formData.get("vehicle_type") as string) || ""
+    if (vehicleType) {
+      vehicleData.vehicle_type = vehicleType
+    }
 
-    const tableName = await getTableName("vehicles")
-
-    // vehicle_order 컬럼 자동 마이그레이션 (기존 테이블 대비)
+    // [요구사항 3] 원본 테이블(drivermgm.vehicles)에서 현재 회사의 최대 순번 조회 + company_code 필터
     try {
-      await supabase.rpc('exec_sql', {
-        sql_query: `ALTER TABLE drivermgm.${tableName} ADD COLUMN IF NOT EXISTS vehicle_order INTEGER`
-      })
-    } catch (e) { /* 무시 */ }
+      const { data: maxRows } = await supabase
+        .schema("drivermgm")
+        .from("vehicles")
+        .select("vehicle_order")
+        .eq("company_code", companyCode)
+        .order("vehicle_order", { ascending: false, nullsFirst: false })
+        .limit(1)
 
-    // 기존 최대 vehicle_order + 1을 신규 차량 순번으로 설정
-    try {
-      const { data: maxData } = await supabase.rpc('query_sql', {
-        sql_query: `SELECT COALESCE(MAX(vehicle_order), 0) AS max_order FROM drivermgm.${tableName}`
-      })
-      const maxOrder = maxData?.[0]?.max_order ?? 0
+      const maxOrder = maxRows?.[0]?.vehicle_order ?? 0
       vehicleData.vehicle_order = maxOrder + 1
     } catch (e) {
       // 순번 계산 실패 시 무시 (NULL로 저장됨)
     }
 
-    // PostgREST를 우회하여 exec_sql로 직접 INSERT (스키마 캐시 문제 방지)
-    const columns = Object.keys(vehicleData)
-    const values = columns.map((col) => {
-      const val = vehicleData[col]
-      if (val === null || val === undefined || val === "") return "NULL"
-      if (typeof val === "number") return String(val)
-      return `'${String(val).replace(/'/g, "''")}'`
-    })
-
-    // vehicle_type 컬럼/값 추가
-    if (vehicleType) {
-      columns.push("vehicle_type")
-      values.push(`'${vehicleType.replace(/'/g, "''")}'`)
-    }
-
-    const insertSQL = `INSERT INTO drivermgm.${tableName} (${columns.join(", ")}) VALUES (${values.join(", ")})`
-
-    const { error: insertError } = await supabase.rpc('exec_sql', {
-      sql_query: insertSQL
-    })
+    // [요구사항 3] 원본 테이블(drivermgm.vehicles)에 직접 삽입 + company_code
+    const { error: insertError } = await supabase
+      .schema("drivermgm")
+      .from("vehicles")
+      .insert({
+        ...vehicleData,
+        company_code: companyCode,
+      })
 
     if (insertError) {
-      console.error("[v0] Error creating vehicle via exec_sql:", insertError)
+      console.error("[v0] Error creating vehicle:", insertError)
       return { success: false, error: "차량 등록 중 오류가 발생했습니다." }
     }
 
@@ -421,8 +447,17 @@ export async function createVehicle(formData: FormData) {
   }
 }
 
+/**
+ * [요구사항 3] 생성/수정(Write) - 원본 테이블 타겟 + company_code 방어
+ */
 export async function addMonthlyMileageRecord(formData: FormData) {
   try {
+    // [요구사항 1] 쿠키에서 회사 코드 추출
+    const companyCode = await getCompanyCode()
+    if (!companyCode) {
+      return { success: false, error: "회사 코드를 찾을 수 없습니다. 다시 로그인해주세요." }
+    }
+
     const supabase = await createAdminClient()
 
     if (!supabase || typeof supabase.from !== "function") {
@@ -465,18 +500,21 @@ export async function addMonthlyMileageRecord(formData: FormData) {
       monthlyDistance = monthEndMileage - monthStartMileage
     }
 
-    // 정비 이력에 기록 (항상 저장)
-    const fieldHistoryTable = await getTableName("vehicle_field_history")
-    const { error: historyError } = await supabase.from(fieldHistoryTable).insert({
-      vehicle_id: vehicleId,
-      maintenance_date: maintenanceDate,
-      field_name: "monthly_mileage",
-      field_label: "전월주행거리",
-      date_value: dateValue,
-      mileage_value: monthlyDistance,
-      text_value: monthStartMileage !== null ? monthStartMileage.toString() : null,
-      text_value2: monthEndMileage !== null ? monthEndMileage.toString() : null,
-    })
+    // [요구사항 3] 원본 테이블(drivermgm.vehicle_field_history)에 직접 삽입 + company_code
+    const { error: historyError } = await supabase
+      .schema("drivermgm")
+      .from("vehicle_field_history")
+      .insert({
+        vehicle_id: vehicleId,
+        maintenance_date: maintenanceDate,
+        field_name: "monthly_mileage",
+        field_label: "전월주행거리",
+        date_value: dateValue,
+        mileage_value: monthlyDistance,
+        text_value: monthStartMileage !== null ? monthStartMileage.toString() : null,
+        text_value2: monthEndMileage !== null ? monthEndMileage.toString() : null,
+        company_code: companyCode,
+      })
 
     if (historyError) {
       console.error("[v0] Error adding monthly mileage to history:", historyError)
@@ -485,14 +523,16 @@ export async function addMonthlyMileageRecord(formData: FormData) {
 
     // 둘 다 입력된 경우에만 차량 정보 업데이트
     if (bothValuesProvided && monthlyDistance !== null) {
-      const vehiclesTable = await getTableName("vehicles")
+      // [요구사항 3] 원본 테이블(drivermgm.vehicles) 수정 + company_code 필터링
       const { error: updateError } = await supabase
-        .from(vehiclesTable)
+        .schema("drivermgm")
+        .from("vehicles")
         .update({
           previous_month_mileage: monthlyDistance,
           updated_at: new Date().toISOString(),
         })
         .eq("id", vehicleId)
+        .eq("company_code", companyCode)
 
       if (updateError) {
         console.error("[v0] Error updating vehicle:", updateError)
@@ -503,12 +543,21 @@ export async function addMonthlyMileageRecord(formData: FormData) {
     return { success: true }
   } catch (error) {
     console.error("[v0] Error in addMonthlyMileageRecord:", error)
-    return { success: false, error: "전월주행거리 �������록 추가 중 오류가 발생했습니다." }
+    return { success: false, error: "전월주행거리 기록 추가 중 오류가 발생했습니다." }
   }
 }
 
+/**
+ * [요구사항 3] 생성/수정(Write) - 원본 테이블 타겟 + company_code 방어
+ */
 export async function addVehicleFieldUpdate(formData: FormData) {
   try {
+    // [요구사항 1] 쿠키에서 회사 코드 추출
+    const companyCode = await getCompanyCode()
+    if (!companyCode) {
+      return { success: false, error: "회사 코드를 찾을 수 없습니다. 다시 로그인해주세요." }
+    }
+
     const supabase = await createAdminClient()
 
     if (!supabase || typeof supabase.from !== "function") {
@@ -553,14 +602,16 @@ export async function addVehicleFieldUpdate(formData: FormData) {
     if (Object.keys(updates).length > 0) {
       console.log("[v0] Updating vehicle with:", updates)
 
-      const vehiclesTable = await getTableName("vehicles")
+      // [요구사항 3] 원본 테이블(drivermgm.vehicles) 수정 + company_code 필터링
       const { error: updateError } = await supabase
-        .from(vehiclesTable)
+        .schema("drivermgm")
+        .from("vehicles")
         .update({
           ...updates,
           updated_at: new Date().toISOString(),
         })
         .eq("id", vehicleId)
+        .eq("company_code", companyCode)
 
       if (updateError) {
         console.error("[v0] Error updating vehicle:", updateError)
@@ -568,19 +619,23 @@ export async function addVehicleFieldUpdate(formData: FormData) {
       }
     }
 
-    const fieldHistoryTable = await getTableName("vehicle_field_history")
-    const { error: historyError } = await supabase.from(fieldHistoryTable).insert({
-      vehicle_id: vehicleId,
-      maintenance_date: maintenanceDate,
-      field_name: fieldName,
-      field_label: fieldLabel,
-      date_value: dateValue,
-      mileage_value: mileageValue,
-      text_value: textValue,
-      text_value2: maintenanceNotes,
-      repair_shop: repairShop,
-      cost: cost,
-    })
+    // [요구사항 3] 원본 테이블(drivermgm.vehicle_field_history)에 직접 삽입 + company_code
+    const { error: historyError } = await supabase
+      .schema("drivermgm")
+      .from("vehicle_field_history")
+      .insert({
+        vehicle_id: vehicleId,
+        maintenance_date: maintenanceDate,
+        field_name: fieldName,
+        field_label: fieldLabel,
+        date_value: dateValue,
+        mileage_value: mileageValue,
+        text_value: textValue,
+        text_value2: maintenanceNotes,
+        repair_shop: repairShop,
+        cost: cost,
+        company_code: companyCode,
+      })
 
     if (historyError) {
       console.error("[v0] Error adding field history:", historyError)
@@ -599,8 +654,17 @@ export async function saveMaintenance(formData: FormData) {
   return addVehicleFieldUpdate(formData)
 }
 
+/**
+ * [요구사항 3] 삭제(Write) - 원본 테이블 타겟 + company_code 방어
+ */
 export async function deleteVehicle(vehicleNumber: string) {
   try {
+    // [요구사항 1] 쿠키에서 회사 코드 추출
+    const companyCode = await getCompanyCode()
+    if (!companyCode) {
+      return { success: false, error: "회사 코드를 찾을 수 없습니다. 다시 로그인해주세요." }
+    }
+
     const supabase = await createAdminClient()
 
     if (!supabase || typeof supabase.from !== "function") {
@@ -608,8 +672,13 @@ export async function deleteVehicle(vehicleNumber: string) {
       return { success: false, error: "데이터베이스 연결 오류" }
     }
 
-    const tableName = await getTableName("vehicles")
-    const { error } = await supabase.from(tableName).delete().eq("vehicle_number", vehicleNumber)
+    // [요구사항 3] 원본 테이블(drivermgm.vehicles)을 대상으로 삭제 + company_code 필터링
+    const { error } = await supabase
+      .schema("drivermgm")
+      .from("vehicles")
+      .delete()
+      .eq("vehicle_number", vehicleNumber)
+      .eq("company_code", companyCode)
 
     if (error) {
       console.error("[v0] Error deleting vehicle:", error)
@@ -623,8 +692,17 @@ export async function deleteVehicle(vehicleNumber: string) {
   }
 }
 
+/**
+ * [요구사항 3] 수정(Write) - 원본 테이블 타겟 + company_code 방어
+ */
 export async function updateVehicleBasicInfo(vehicleNumber: string, updates: any) {
   try {
+    // [요구사항 1] 쿠키에서 회사 코드 추출
+    const companyCode = await getCompanyCode()
+    if (!companyCode) {
+      return { success: false, error: "회사 코드를 찾을 수 없습니다. 다시 로그인해주세요." }
+    }
+
     const supabase = await createAdminClient()
 
     if (!supabase || typeof supabase.from !== "function") {
@@ -632,33 +710,30 @@ export async function updateVehicleBasicInfo(vehicleNumber: string, updates: any
       return { success: false, error: "데이터베이스 연결 오류" }
     }
 
-    const tableName = await getTableName("vehicles")
-    
-    // exec_sql을 사용하여 직접 SQL로 업데이트 (PostgREST 스키마 캐시 우회)
-    const setClauses: string[] = [`updated_at = '${new Date().toISOString()}'`]
+    // 전달된 필드만 선별적으로 반영
+    const updateData: any = { updated_at: new Date().toISOString() }
 
-    const dateFields = ["release_date", "last_inspection_date"]
+    if (updates.transporter !== undefined) updateData.transporter = updates.transporter || null
+    if (updates.driver_name !== undefined) updateData.driver_name = updates.driver_name || null
+    if (updates.manufacturer !== undefined) updateData.manufacturer = updates.manufacturer || null
+    if (updates.release_date !== undefined) updateData.release_date = updates.release_date || null
+    if (updates.last_inspection_date !== undefined)
+      updateData.last_inspection_date = updates.last_inspection_date || null
+    if (updates.total_mileage !== undefined)
+      updateData.total_mileage =
+        updates.total_mileage === null || updates.total_mileage === "" ? null : Number(updates.total_mileage)
+    if (updates.vehicle_type !== undefined) updateData.vehicle_type = updates.vehicle_type || null
+    if (updates.vehicle_order !== undefined)
+      updateData.vehicle_order =
+        updates.vehicle_order === null || updates.vehicle_order === "" ? null : Number(updates.vehicle_order)
 
-    const formatSqlValue = (key: string, val: any): string => {
-      if (val === null || val === undefined || val === "") return "NULL"
-      if (typeof val === "number") return String(val)
-      return `'${String(val).replace(/'/g, "''")}'`
-    }
-    
-    if (updates.transporter !== undefined) setClauses.push(`transporter = ${formatSqlValue("transporter", updates.transporter)}`)
-    if (updates.driver_name !== undefined) setClauses.push(`driver_name = ${formatSqlValue("driver_name", updates.driver_name)}`)
-    if (updates.manufacturer !== undefined) setClauses.push(`manufacturer = ${formatSqlValue("manufacturer", updates.manufacturer)}`)
-    if (updates.release_date !== undefined) setClauses.push(`release_date = ${formatSqlValue("release_date", updates.release_date)}`)
-    if (updates.last_inspection_date !== undefined) setClauses.push(`last_inspection_date = ${formatSqlValue("last_inspection_date", updates.last_inspection_date)}`)
-    if (updates.total_mileage !== undefined) setClauses.push(`total_mileage = ${formatSqlValue("total_mileage", updates.total_mileage)}`)
-    if (updates.vehicle_type !== undefined) setClauses.push(`vehicle_type = ${formatSqlValue("vehicle_type", updates.vehicle_type)}`)
-    if (updates.vehicle_order !== undefined) setClauses.push(`vehicle_order = ${updates.vehicle_order === null || updates.vehicle_order === "" ? "NULL" : Number(updates.vehicle_order)}`)
-
-    const updateSQL = `UPDATE drivermgm.${tableName} SET ${setClauses.join(", ")} WHERE vehicle_number = '${vehicleNumber.replace(/'/g, "''")}'`
-
-    const { error } = await supabase.rpc('exec_sql', {
-      sql_query: updateSQL
-    })
+    // [요구사항 3] 원본 테이블(drivermgm.vehicles) 수정 + company_code 필터링
+    const { error } = await supabase
+      .schema("drivermgm")
+      .from("vehicles")
+      .update(updateData)
+      .eq("vehicle_number", vehicleNumber)
+      .eq("company_code", companyCode)
 
     if (error) {
       console.error("[v0] Error updating vehicle basic info:", error)
@@ -672,8 +747,18 @@ export async function updateVehicleBasicInfo(vehicleNumber: string, updates: any
   }
 }
 
+/**
+ * [요구사항 3] 생성/수정(Write) - 원본 테이블 타겟 + company_code 방어
+ * (기존 버그: 정비이력을 회사 접미사 없는 공유 테이블에 저장하던 부분을 원본 테이블 + company_code로 교정)
+ */
 export async function addRefuelingRecord(formData: FormData) {
   try {
+    // [요구사항 1] 쿠키에서 회사 코드 추출
+    const companyCode = await getCompanyCode()
+    if (!companyCode) {
+      return { success: false, error: "회사 코드를 찾을 수 없습니다. 다시 로그인해주세요." }
+    }
+
     const supabase = await createAdminClient()
 
     if (!supabase || typeof supabase.from !== "function") {
@@ -700,30 +785,42 @@ export async function addRefuelingRecord(formData: FormData) {
       maintenanceNotes,
     })
 
-    const refuelingTable = await getTableName("refueling_history")
-    const { error: refuelError } = await supabase.from(refuelingTable).insert({
-      vehicle_id: vehicleId,
-      refuel_date: refuelDate,
-      mileage,
-      fuel_amount: fuelAmount,
-      fuel_cost: fuelCost,
-      maintenance_date: maintenanceDate,
-    })
+    // [요구사항 3] 원본 테이블(drivermgm.refueling_history)에 직접 삽입 + company_code
+    const { error: refuelError } = await supabase
+      .schema("drivermgm")
+      .from("refueling_history")
+      .insert({
+        vehicle_id: vehicleId,
+        refuel_date: refuelDate,
+        mileage,
+        fuel_amount: fuelAmount,
+        fuel_cost: fuelCost,
+        maintenance_date: maintenanceDate,
+        company_code: companyCode,
+      })
 
     if (refuelError) {
       console.error("[v0] Error adding refueling record:", refuelError)
       return { success: false, error: refuelError.message }
     }
 
-    const vehiclesTable = await getTableName("vehicles")
-    const { data: vehicle } = await supabase.from(vehiclesTable).select("total_mileage").eq("id", vehicleId).single()
+    // [요구사항 3] 원본 테이블(drivermgm.vehicles)에서 현재 총주행거리 조회 + company_code 필터링
+    const { data: vehicle } = await supabase
+      .schema("drivermgm")
+      .from("vehicles")
+      .select("total_mileage")
+      .eq("id", vehicleId)
+      .eq("company_code", companyCode)
+      .single()
 
     const previousMileage = vehicle?.total_mileage ?? 0
     const distance = mileage - previousMileage
     const efficiency = distance > 0 && fuelAmount > 0 ? distance / fuelAmount : 0
 
+    // [요구사항 3] 원본 테이블(drivermgm.vehicles) 수정 + company_code 필터링
     const { error: updateError } = await supabase
-      .from(vehiclesTable)
+      .schema("drivermgm")
+      .from("vehicles")
       .update({
         total_mileage: mileage,
         last_refuel_date: refuelDate,
@@ -732,23 +829,30 @@ export async function addRefuelingRecord(formData: FormData) {
         updated_at: new Date().toISOString(),
       })
       .eq("id", vehicleId)
+      .eq("company_code", companyCode)
 
     if (updateError) {
       console.error("[v0] Error updating vehicle:", updateError)
       return { success: false, error: updateError.message }
     }
 
-    const { error: historyError } = await supabase.from('"drivermgm"."vehicle_field_history"').insert({
-      vehicle_id: vehicleId,
-      maintenance_date: maintenanceDate,
-      field_name: "refueling",
-      field_label: "주유",
-      date_value: refuelDate,
-      mileage_value: mileage,
-      text_value: `${fuelAmount}L / ${fuelCost.toLocaleString()}원`,
-      repair_shop: repairShop,
-      text_value2: maintenanceNotes,
-    })
+    // [버그 교정 + 요구사항 3] 원본 테이블(drivermgm.vehicle_field_history)에 직접 삽입 + company_code
+    // (기존에는 회사 접미사 없는 공유 테이블에 저장되어 특정 차량만 이력이 노출되던 원인)
+    const { error: historyError } = await supabase
+      .schema("drivermgm")
+      .from("vehicle_field_history")
+      .insert({
+        vehicle_id: vehicleId,
+        maintenance_date: maintenanceDate,
+        field_name: "refueling",
+        field_label: "주유",
+        date_value: refuelDate,
+        mileage_value: mileage,
+        text_value: `${fuelAmount}L / ${fuelCost.toLocaleString()}원`,
+        repair_shop: repairShop,
+        text_value2: maintenanceNotes,
+        company_code: companyCode,
+      })
 
     if (historyError) {
       console.error("[v0] Error adding refueling to history:", historyError)
@@ -761,16 +865,31 @@ export async function addRefuelingRecord(formData: FormData) {
   }
 }
 
+/**
+ * [요구사항 3] 조회(Write 컨텍스트의 중복 검증) - 원본 테이블 타겟 + company_code 방어
+ */
 export async function checkVehicleOrderDuplicate(order: number, excludeVehicleNumber: string) {
   try {
+    // [요구사항 1] 쿠키에서 회사 코드 추출
+    const companyCode = await getCompanyCode()
+    if (!companyCode) {
+      return { isDuplicate: false, existingVehicleNumber: null }
+    }
+
     const supabase = await createAdminClient()
     if (!supabase || typeof supabase.from !== "function") {
       return { isDuplicate: false, existingVehicleNumber: null }
     }
-    const tableName = await getTableName("vehicles")
-    const { data } = await supabase.rpc('query_sql', {
-      sql_query: `SELECT vehicle_number FROM drivermgm.${tableName} WHERE vehicle_order = ${Number(order)} AND vehicle_number != '${excludeVehicleNumber.replace(/'/g, "''")}'`
-    })
+
+    // [요구사항 3] 원본 테이블(drivermgm.vehicles) 조회 + company_code 필터링
+    const { data } = await supabase
+      .schema("drivermgm")
+      .from("vehicles")
+      .select("vehicle_number")
+      .eq("vehicle_order", Number(order))
+      .eq("company_code", companyCode)
+      .neq("vehicle_number", excludeVehicleNumber)
+
     if (data && Array.isArray(data) && data.length > 0) {
       return { isDuplicate: true, existingVehicleNumber: data[0].vehicle_number as string }
     }
@@ -780,8 +899,17 @@ export async function checkVehicleOrderDuplicate(order: number, excludeVehicleNu
   }
 }
 
+/**
+ * [요구사항 3] 삭제(Write) - 원본 테이블 타겟 + company_code 방어
+ */
 export async function deleteMaintenanceRecord(recordId: string | number, recordType: string) {
   try {
+    // [요구사항 1] 쿠키에서 회사 코드 추출
+    const companyCode = await getCompanyCode()
+    if (!companyCode) {
+      return { success: false, error: "회사 코드를 찾을 수 없습니다. 다시 로그인해주세요." }
+    }
+
     const supabase = await createAdminClient()
 
     if (!supabase || typeof supabase.from !== "function") {
@@ -789,19 +917,18 @@ export async function deleteMaintenanceRecord(recordId: string | number, recordT
       return { success: false, error: "데이터베이스 연결 오류" }
     }
 
-    const fieldHistoryTable = await getTableName("vehicle_field_history")
-    const inspectionTable = await getTableName("inspection_history")
-    const vehiclesTable = await getTableName("vehicles")
-
-    const schemaTableName = recordType === "inspection" ? inspectionTable : fieldHistoryTable
+    // [요구사항 3] 원본 테이블 대상 (drivermgm 스키마)
+    const historyBaseTable = recordType === "inspection" ? "inspection_history" : "vehicle_field_history"
 
     // 먼저 레코드 정보를 가져옴 (vehicle_id와 field_name 필요)
     // inspection_history 테이블에는 field_name 컬럼이 없으므로 recordType에 따라 select 컬럼을 분기
     const selectColumns = recordType === "inspection" ? "id, vehicle_id" : "id, vehicle_id, field_name"
     const { data: existingRecord, error: selectError } = await supabase
-      .from(schemaTableName)
+      .schema("drivermgm")
+      .from(historyBaseTable)
       .select(selectColumns)
       .eq("id", recordId)
+      .eq("company_code", companyCode)
       .maybeSingle()
 
     if (selectError) {
@@ -813,14 +940,16 @@ export async function deleteMaintenanceRecord(recordId: string | number, recordT
       return { success: true }
     }
 
-    const vehicleId = existingRecord.vehicle_id
-    const fieldName = recordType === "inspection" ? "inspection" : (existingRecord.field_name || recordType)
+    const vehicleId = (existingRecord as any).vehicle_id
+    const fieldName = recordType === "inspection" ? "inspection" : ((existingRecord as any).field_name || recordType)
 
-    // 삭제 실행
+    // [요구사항 3] 원본 테이블 삭제 + company_code 필터링
     const { error: deleteError } = await supabase
-      .from(schemaTableName)
+      .schema("drivermgm")
+      .from(historyBaseTable)
       .delete()
       .eq("id", recordId)
+      .eq("company_code", companyCode)
 
     if (deleteError) {
       console.error("[v0] Error deleting record:", deleteError)
@@ -829,17 +958,22 @@ export async function deleteMaintenanceRecord(recordId: string | number, recordT
 
     // 차량 테이블의 최종 저장값 동기화 (삭제 후 남은 이력 중 최신값으로 업데이트)
     if (recordType === "inspection") {
+      // [요구사항 3] 원본 테이블 조회 + company_code 필터링
       const { data: latestInspection } = await supabase
-        .from(inspectionTable)
+        .schema("drivermgm")
+        .from("inspection_history")
         .select("*")
         .eq("vehicle_id", vehicleId)
+        .eq("company_code", companyCode)
         .order("inspection_date", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle()
 
+      // [요구사항 3] 원본 테이블 수정 + company_code 필터링
       await supabase
-        .from(vehiclesTable)
+        .schema("drivermgm")
+        .from("vehicles")
         .update({
           last_inspection_date: latestInspection?.inspection_date || null,
           inspection_name: latestInspection?.inspection_name || null,
@@ -848,26 +982,33 @@ export async function deleteMaintenanceRecord(recordId: string | number, recordT
           updated_at: new Date().toISOString(),
         })
         .eq("id", vehicleId)
+        .eq("company_code", companyCode)
     } else if (fieldName !== "refueling" && fieldName !== "monthly_mileage" && fieldName !== "others") {
       // 일반 정비항목: 가장 최신 레코드로 차량 테이블 동기화
+      // [요구사항 3] 원본 테이블 조회 + company_code 필터링
       const { data: latestRecord } = await supabase
-        .from(fieldHistoryTable)
+        .schema("drivermgm")
+        .from("vehicle_field_history")
         .select("*")
         .eq("vehicle_id", vehicleId)
         .eq("field_name", fieldName)
+        .eq("company_code", companyCode)
         .order("date_value", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle()
 
+      // [요구사항 3] 원본 테이블 수정 + company_code 필터링
       await supabase
-        .from(vehiclesTable)
+        .schema("drivermgm")
+        .from("vehicles")
         .update({
           [`${fieldName}_date`]: latestRecord?.date_value || null,
           [`${fieldName}_mileage`]: latestRecord?.mileage_value || null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", vehicleId)
+        .eq("company_code", companyCode)
     }
 
     return { success: true }
@@ -877,8 +1018,17 @@ export async function deleteMaintenanceRecord(recordId: string | number, recordT
   }
 }
 
+/**
+ * [요구사항 3] 생성/수정(Write) - 원본 테이블 타겟 + company_code 방어
+ */
 export async function addInspectionRecord(formData: FormData) {
   try {
+    // [요구사항 1] 쿠키에서 회사 코드 추출
+    const companyCode = await getCompanyCode()
+    if (!companyCode) {
+      return { success: false, error: "회사 코드를 찾을 수 없습니다. 다시 로그인해주세요." }
+    }
+
     const supabase = await createAdminClient()
 
     if (!supabase || typeof supabase.from !== "function") {
@@ -905,26 +1055,31 @@ export async function addInspectionRecord(formData: FormData) {
       email2,
     })
 
-    const inspectionTable = await getTableName("inspection_history")
-    const { error: inspectionError } = await supabase.from(inspectionTable).insert({
-      vehicle_id: vehicleId,
-      inspection_date: inspectionDate,
-      inspection_name: inspectionName,
-      inspection_result: inspectionResult,
-      inspection_notes: inspectionNotes,
-      maintenance_date: maintenanceDate,
-      email_1: email1,
-      email_2: email2,
-    })
+    // [요구사항 3] 원본 테이블(drivermgm.inspection_history)에 직접 삽입 + company_code
+    const { error: inspectionError } = await supabase
+      .schema("drivermgm")
+      .from("inspection_history")
+      .insert({
+        vehicle_id: vehicleId,
+        inspection_date: inspectionDate,
+        inspection_name: inspectionName,
+        inspection_result: inspectionResult,
+        inspection_notes: inspectionNotes,
+        maintenance_date: maintenanceDate,
+        email_1: email1,
+        email_2: email2,
+        company_code: companyCode,
+      })
 
     if (inspectionError) {
       console.error("[v0] Error adding inspection record:", inspectionError)
       return { success: false, error: inspectionError.message }
     }
 
-    const vehiclesTable = await getTableName("vehicles")
+    // [요구사항 3] 원본 테이블(drivermgm.vehicles) 수정 + company_code 필터링
     const { error: updateError } = await supabase
-      .from(vehiclesTable)
+      .schema("drivermgm")
+      .from("vehicles")
       .update({
         last_inspection_date: inspectionDate,
         inspection_name: inspectionName,
@@ -933,6 +1088,7 @@ export async function addInspectionRecord(formData: FormData) {
         updated_at: new Date().toISOString(),
       })
       .eq("id", vehicleId)
+      .eq("company_code", companyCode)
 
     if (updateError) {
       console.error("[v0] Error updating vehicle:", updateError)
