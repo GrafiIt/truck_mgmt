@@ -21,7 +21,14 @@ import {
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { formatNumberWithCommas, parseNumberFromFormatted } from "@/lib/number-formatter"
-import { deleteMaintenanceRecord } from "../actions"
+import {
+  deleteMaintenanceRecord,
+  saveMaintenance,
+  addMonthlyMileageRecord,
+  addRefuelingRecord,
+  addInspectionRecord,
+  updateMaintenanceRecord,
+} from "../actions"
 import { createClient } from "@/lib/supabase/client"
 
 const VEHICLE_FIELDS = [
@@ -268,12 +275,8 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
     if (costValue) formData.set("cost", costValue)
     if (fuelCostValue) formData.set("fuel_cost", fuelCostValue)
     
-    // 최신 총주행거리를 데이터베이스에서 조회 (차량상세정보에서 수정된 값 반영)
-    const vehicleData = await fetch(`/api/drivermgm/get-vehicle/${vehicleId}`)
-      .then((res) => res.json())
-      .catch(() => null)
-    
-    const currentTotalMileage = vehicleData?.vehicle?.total_mileage ?? vehicle.total_mileage ?? 0
+    // props로 전달된 vehicle.total_mileage를 현재 총주행거리로 사용
+    const currentTotalMileage = vehicle.total_mileage ?? 0
 
     if (selectedField === "others") {
       // 정비실행일
@@ -393,30 +396,16 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
 
       let result
       if (selectedField === "monthly_mileage") {
-        result = await fetch("/api/drivermgm/add-monthly-mileage-record", {
-          method: "POST",
-          body: formData,
-        }).then((response) => response.json())
+        result = await addMonthlyMileageRecord(formData)
       } else if (selectedField === "refueling") {
-        console.log("[v0] Calling /api/drivermgm/add-refueling-record...")
-        result = await fetch("/api/drivermgm/add-refueling-record", {
-          method: "POST",
-          body: formData,
-        }).then((response) => response.json())
+        result = await addRefuelingRecord(formData)
       } else if (selectedField === "inspection") {
         // Controlled input이 formData에 포함되지 않을 수 있으므로 명시적으로 추가
         formData.set("email_1", inspectionEmail1 || "")
         formData.set("email_2", inspectionEmail2 || "")
-        
-        result = await fetch("/api/drivermgm/add-inspection-record", {
-          method: "POST",
-          body: formData,
-        }).then((response) => response.json())
+        result = await addInspectionRecord(formData)
       } else {
-        result = await fetch("/api/drivermgm/save-maintenance-record", {
-          method: "POST",
-          body: formData,
-        }).then((response) => response.json())
+        result = await saveMaintenance(formData)
       }
 
       console.log("[v0] Maintenance record result:", result)
@@ -2105,15 +2094,10 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
 
                 console.log("[v0] Update payload:", updatePayload)
 
-                const response = await fetch("/api/drivermgm/update-maintenance-record", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(updatePayload),
-                })
+                const result = await updateMaintenanceRecord(updatePayload)
 
-                if (!response.ok) {
-                  const error = await response.json()
-                  throw new Error(error.error || "업데이트 중 오류가 발생했습니다.")
+                if (!result.success) {
+                  throw new Error(result.error || "업데이트 중 오류가 발생했습니다.")
                 }
 
                 console.log("[v0] Update successful")

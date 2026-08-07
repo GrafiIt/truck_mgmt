@@ -448,7 +448,7 @@ export async function createVehicle(formData: FormData) {
 
 /**
  * [생성/수정] 회사 전용 테이블 vehicle_field_history_${companyCode}에 전월주행거리를 기록하고,
- * vehicles_${companyCode}의 전월주행거리를 갱신한다.
+ * vehicles_${companyCode}의 전���주행거리를 갱신한다.
  */
 export async function addMonthlyMileageRecord(formData: FormData) {
   try {
@@ -1057,12 +1057,159 @@ export async function addInspectionRecord(formData: FormData) {
       return { success: false, error: updateError.message }
     }
 
-    // 정기점검은 inspection_history 테이블에만 저장 (vehicle_field_history에는 저장하지 않음)
+    // 정기��검은 inspection_history 테이블에만 저장 (vehicle_field_history에는 저장하지 않음)
     // 중복 저장을 방지하여 리스트에 2줄로 나타나지 않도록 함
 
     return { success: true }
   } catch (error) {
     console.error("[v0] Error in addInspectionRecord:", error)
     return { success: false, error: "정기검사 기록 추가 중 오류가 발생했습니다." }
+  }
+}
+
+/**
+ * [수정] 회사 전용 이력 테이블에서 정비 이력 레코드를 수정하고, vehicles_${companyCode}의 최신 데이터를 동기화한다.
+ * - field_name === "inspection" → inspection_history_${companyCode}
+ * - 그 외 (refueling, monthly_mileage, others, 일반 정비항목) → vehicle_field_history_${companyCode}
+ * - 수정 후 vehicles_${companyCode}의 최신 날짜/마일리지/점검 정보를 동기화한다.
+ */
+export async function updateMaintenanceRecord(payload: any) {
+  try {
+    const companyCode = await getCompanyCode()
+    if (!companyCode) {
+      return { success: false, error: "회사 코드를 찾을 수 없습니다. 다시 로그인해주세요." }
+    }
+
+    const supabase = await createAdminClient()
+
+    if (!supabase || typeof supabase.from !== "function") {
+      console.error("[v0] Invalid Supabase client returned")
+      return { success: false, error: "데이터베이스 연결 오류" }
+    }
+
+    const { id, vehicle_id, field_name } = payload
+    const vehiclesTable = getTableName("vehicles", companyCode)
+
+    // ──────────────────────────────────────────────
+    // 1. 정기점검 (inspection_history)
+    // ──────────────────────────────────────────────
+    if (field_name === "inspection") {
+      const inspectionTable = getTableName("inspection_history", companyCode)
+
+      const updateData: any = {}
+      if (payload.date_value !== undefined) updateData.inspection_date = payload.date_value || null
+      if (payload.maintenance_date !== undefined) updateData.maintenance_date = payload.maintenance_date || null
+      if (payload.text_value !== undefined) updateData.inspection_name = payload.text_value || null
+      if (payload.inspection_result !== undefined) updateData.inspection_result = payload.inspection_result || null
+      if (payload.inspection_notes !== undefined) updateData.inspection_notes = payload.inspection_notes || null
+      if (payload.email_1 !== undefined) updateData.email_1 = payload.email_1 || null
+      if (payload.email_2 !== undefined) updateData.email_2 = payload.email_2 || null
+      if (payload.repair_shop !== undefined) updateData.repair_shop = payload.repair_shop || null
+      if (payload.cost !== undefined) updateData.cost = payload.cost ?? null
+
+      const { error: updateError } = await supabase
+        .schema("drivermgm")
+        .from(inspectionTable)
+        .update(updateData)
+        .eq("id", id)
+
+      if (updateError) {
+        console.error("[v0] Error updating inspection record:", updateError)
+        return { success: false, error: updateError.message }
+      }
+
+      // vehicles 동기화: inspection_history에서 가장 최신 레코드로 업데이트
+      const { data: latestInspection } = await supabase
+        .schema("drivermgm")
+        .from(inspectionTable)
+        .select("*")
+        .eq("vehicle_id", vehicle_id)
+        .order("inspection_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      await supabase
+        .schema("drivermgm")
+        .from(vehiclesTable)
+        .update({
+          last_inspection_date: latestInspection?.inspection_date || null,
+          inspection_name: latestInspection?.inspection_name || null,
+          inspection_result: latestInspection?.inspection_result || null,
+          inspection_notes: latestInspection?.inspection_notes || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", vehicle_id)
+
+      return { success: true }
+    }
+
+    // ──────────────────────────────────────────────
+    // 2. 주유 / 일반 정비항목 (vehicle_field_history)
+    // ──────────────────────────────────────────────
+    const fieldHistoryTable = getTableName("vehicle_field_history", companyCode)
+
+    const updateData: any = {}
+    if (payload.maintenance_date !== undefined) updateData.maintenance_date = payload.maintenance_date || null
+    if (payload.date_value !== undefined) updateData.date_value = payload.date_value || null
+    if (payload.mileage_value !== undefined) updateData.mileage_value = payload.mileage_value ?? null
+    if (payload.repair_shop !== undefined) updateData.repair_shop = payload.repair_shop || null
+    if (payload.cost !== undefined) updateData.cost = payload.cost ?? null
+    if (payload.text_value !== undefined) updateData.text_value = payload.text_value || null
+    if (payload.text_value2 !== undefined) updateData.text_value2 = payload.text_value2 || null
+
+    // 주유 전용: text_value에 "주유량L / 주유비원" 형식으로 반영
+    if (field_name === "refueling") {
+      const fuelAmount = payload.fuel_amount ?? null
+      const fuelCost = payload.fuel_cost ?? null
+      if (fuelAmount !== null || fuelCost !== null) {
+        updateData.text_value = `${fuelAmount ?? 0}L / ${(fuelCost ?? 0).toLocaleString()}원`
+      }
+    }
+
+    // 기타 항목: others_summary → text_value
+    if (field_name === "others" && payload.others_summary !== undefined) {
+      updateData.text_value = payload.others_summary || null
+    }
+
+    const { error: updateError } = await supabase
+      .schema("drivermgm")
+      .from(fieldHistoryTable)
+      .update(updateData)
+      .eq("id", id)
+
+    if (updateError) {
+      console.error("[v0] Error updating field history record:", updateError)
+      return { success: false, error: updateError.message }
+    }
+
+    // vehicles 동기화: 일반 정비항목(refueling, monthly_mileage, others 제외)만
+    if (field_name !== "refueling" && field_name !== "monthly_mileage" && field_name !== "others") {
+      const { data: latestRecord } = await supabase
+        .schema("drivermgm")
+        .from(fieldHistoryTable)
+        .select("*")
+        .eq("vehicle_id", vehicle_id)
+        .eq("field_name", field_name)
+        .order("date_value", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      await supabase
+        .schema("drivermgm")
+        .from(vehiclesTable)
+        .update({
+          [`${field_name}_date`]: latestRecord?.date_value || null,
+          [`${field_name}_mileage`]: latestRecord?.mileage_value || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", vehicle_id)
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("[v0] Error in updateMaintenanceRecord:", error)
+    return { success: false, error: "정비 이력 수정 중 오류가 발생했습니다." }
   }
 }
