@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Search, Trash2, Edit2, Download, Camera, X, Receipt } from "lucide-react"
+import { Plus, Search, Trash2, Edit2, Download, Camera, X, Receipt, RefreshCw } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Dialog,
@@ -487,6 +487,17 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
         return
       }
     }
+  }
+
+  const handleResetFilters = () => {
+    setFilterField("all")
+    setContentSearchQuery("")
+    setFilterSearchQuery("")
+    setFilterPeriod("year")
+    setStartDate("")
+    setEndDate("")
+    setSortBy("maintenance_date")
+    router.refresh()
   }
 
   const filteredRecords = useMemo(() => {
@@ -1315,15 +1326,26 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
               </div>
               <div>
                 <Label htmlFor="sort_by">정렬기준</Label>
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="maintenance_date">정비실행일</SelectItem>
-                    <SelectItem value="input_date">입력일자</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="maintenance_date">정비실행일</SelectItem>
+                      <SelectItem value="input_date">입력일자</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleResetFilters}
+                    title="필터 초기화 및 새로고침"
+                    className="shrink-0 px-3"
+                  >
+                    <RefreshCw className="w-5 h-5" />
+                  </Button>
+                </div>
               </div>
               {filterPeriod === "custom" && (
                 <>
@@ -1644,7 +1666,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>정비 이력 수정</DialogTitle>
+            <DialogTitle>��비 이력 수정</DialogTitle>
             <DialogDescription>{recordToEdit?.field_label} 항목 수정</DialogDescription>
           </DialogHeader>
 
