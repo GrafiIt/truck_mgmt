@@ -135,6 +135,12 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
   const [editValues, setEditValues] = useState<Record<string, string>>({})
   const [isUpdating, setIsUpdating] = useState(false)
   const [editError, setEditError] = useState("")
+
+  // 수정 모달 영수증 관련 상태
+  const [editReceiptBlob, setEditReceiptBlob] = useState<Blob | null>(null)
+  const [editReceiptPreview, setEditReceiptPreview] = useState<string | null>(null)
+  const [isUploadingEditReceipt, setIsUploadingEditReceipt] = useState(false)
+  const editReceiptInputRef = useRef<HTMLInputElement>(null)
   
   // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1)
@@ -738,6 +744,12 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
       fuel_amount: record.fuel_amount ? record.fuel_amount.toString() : "",
       fuel_cost: record.fuel_cost ? record.fuel_cost.toString() : "",
     })
+    // 수정 모달 영수증 상태 초기화: 기존 URL을 미리보기로 세팅
+    setEditReceiptBlob(null)
+    if (editReceiptPreview) URL.revokeObjectURL(editReceiptPreview)
+    setEditReceiptPreview(record.receipt_image_url || null)
+    if (editReceiptInputRef.current) editReceiptInputRef.current.value = ""
+
     setEditModalOpen(true)
     setEditError("")
   }
@@ -2017,6 +2029,73 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                 )}
               </>
             )}
+
+            {/* 영수증/명세서 첨부 (선택) */}
+            <div className="space-y-2 pt-2 border-t">
+              <Label>영수증 / 명세서 첨부 (선택)</Label>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                  onClick={() => editReceiptInputRef.current?.click()}
+                  disabled={isUploadingEditReceipt}
+                >
+                  <Camera className="w-4 h-4" />
+                  {editReceiptPreview ? "사진 변경" : "사진 첨부"}
+                </Button>
+                {editReceiptPreview && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => {
+                      if (editReceiptBlob && editReceiptPreview) URL.revokeObjectURL(editReceiptPreview)
+                      setEditReceiptBlob(null)
+                      setEditReceiptPreview(null)
+                      if (editReceiptInputRef.current) editReceiptInputRef.current.value = ""
+                    }}
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    삭제
+                  </Button>
+                )}
+              </div>
+              <input
+                ref={editReceiptInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  try {
+                    const compressed = await resizeImage(file)
+                    if (editReceiptBlob && editReceiptPreview) URL.revokeObjectURL(editReceiptPreview)
+                    setEditReceiptBlob(compressed)
+                    setEditReceiptPreview(URL.createObjectURL(compressed))
+                  } catch (err) {
+                    console.error("[v0] Edit receipt compression error:", err)
+                    alert("이미지 처리 중 오류가 발생했습니다. 다른 사진을 선택해주세요.")
+                  } finally {
+                    if (editReceiptInputRef.current) editReceiptInputRef.current.value = ""
+                  }
+                }}
+              />
+              {editReceiptPreview && (
+                <div className="relative inline-block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={editReceiptPreview}
+                    alt="영수증 미리보기"
+                    className="max-h-40 rounded-md border object-contain"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <DialogFooter>
@@ -2092,6 +2171,33 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                   updatePayload.month_end_mileage = monthEnd || null
                 }
 
+                // 영수증 처리: 새 사진 업로드 → URL, 기존 유지 → 기존 URL, 삭제됨 → null
+                let finalReceiptUrl: string | null = null
+                if (editReceiptBlob) {
+                  // 새 영수증 업로드
+                  setIsUploadingEditReceipt(true)
+                  try {
+                    const supabase = createClient()
+                    const fileName = `receipt_${vehicleId}_${Date.now()}.jpg`
+                    const filePath = `${vehicleId}/${fileName}`
+                    const { error: uploadError } = await supabase.storage
+                      .from("equipment-receipts")
+                      .upload(filePath, editReceiptBlob, { contentType: "image/jpeg", upsert: false })
+                    if (uploadError) throw new Error(`영수증 업로드 실패: ${uploadError.message}`)
+                    const { data: publicUrlData } = supabase.storage.from("equipment-receipts").getPublicUrl(filePath)
+                    finalReceiptUrl = publicUrlData.publicUrl
+                  } finally {
+                    setIsUploadingEditReceipt(false)
+                  }
+                } else if (editReceiptPreview) {
+                  // 기존 URL 유지 (삭제 안 함)
+                  finalReceiptUrl = editReceiptPreview
+                } else {
+                  // 미리보기가 없으면 삭제된 것으로 처리 → null
+                  finalReceiptUrl = null
+                }
+                updatePayload.receipt_image_url = finalReceiptUrl
+
                 console.log("[v0] Update payload:", updatePayload)
 
                 const result = await updateMaintenanceRecord(updatePayload)
@@ -2111,8 +2217,8 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
               } finally {
                 setIsUpdating(false)
               }
-            }} disabled={isUpdating}>
-              {isUpdating ? "수정 중..." : "수정"}
+            }} disabled={isUpdating || isUploadingEditReceipt}>
+              {isUploadingEditReceipt ? "영수증 업로드 중..." : isUpdating ? "수정 중..." : "수정"}
             </Button>
           </DialogFooter>
         </DialogContent>
