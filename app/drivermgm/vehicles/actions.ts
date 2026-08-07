@@ -214,6 +214,7 @@ export async function getMaintenanceRecords(vehicleId: number) {
           others_summary: record.field_name === "others" ? record.text_value : null,
           fuel_amount: fuel_amount,
           fuel_cost: fuel_cost,
+          receipt_image_url: record.receipt_image_url || null,
         }
       }) || []
 
@@ -236,6 +237,7 @@ export async function getMaintenanceRecords(vehicleId: number) {
         inspection_result: record.inspection_result,
         inspection_name: record.inspection_name,
         inspection_notes: record.inspection_notes,
+        receipt_image_url: record.receipt_image_url || null,
       })) || []
 
     const allRecords = [...fieldRecords, ...inspectionRecords].sort((a, b) => {
