@@ -67,7 +67,7 @@ export async function getVehicles(companyCodeParam?: string) {
         return []
       }
 
-      const { data, error } = await supabase.from(tableName).select("*").order("vehicle_number", { ascending: true })
+      const { data, error } = await supabase.schema("drivermgm").from(tableName).select("*").order("vehicle_number", { ascending: true })
 
       if (error) {
         console.error(`[v0] getVehicles: Database error on attempt ${attempt}:`, {
@@ -135,7 +135,7 @@ export async function getVehicleByNumber(vehicleNumber: string) {
     }
 
     const tableName = getTableName("vehicles", companyCode)
-    const { data, error } = await supabase.from(tableName).select("*").eq("vehicle_number", vehicleNumber).single()
+    const { data, error } = await supabase.schema("drivermgm").from(tableName).select("*").eq("vehicle_number", vehicleNumber).single()
 
     if (error) {
       console.error("[v0] Error fetching vehicle:", error)
@@ -168,6 +168,7 @@ export async function getMaintenanceRecords(vehicleId: number) {
     const inspectionTable = getTableName("inspection_history", companyCode)
 
     const { data: fieldHistory, error: fieldError } = await supabase
+      .schema("drivermgm")
       .from(fieldHistoryTable)
       .select("*")
       .eq("vehicle_id", vehicleId)
@@ -177,6 +178,7 @@ export async function getMaintenanceRecords(vehicleId: number) {
     if (fieldError) throw fieldError
 
     const { data: inspectionHistory, error: inspectionError } = await supabase
+      .schema("drivermgm")
       .from(inspectionTable)
       .select("*")
       .eq("vehicle_id", vehicleId)
@@ -275,7 +277,7 @@ export async function addMaintenanceRecord(formData: FormData) {
 
     // 회사 전용 동적 테이블에 삽입
     const tableName = getTableName("maintenance_records", companyCode)
-    const { error } = await supabase.from(tableName).insert({
+    const { error } = await supabase.schema("drivermgm").from(tableName).insert({
       vehicle_id: vehicleId,
       maintenance_date: maintenanceDate,
       driver_name: driverName,
@@ -318,6 +320,7 @@ export async function updateVehicle(vehicleNumber: string, updates: any) {
     // 회사 전용 동적 테이블을 대상으로 수정 (차량번호로 식별)
     const tableName = getTableName("vehicles", companyCode)
     const { error } = await supabase
+      .schema("drivermgm")
       .from(tableName)
       .update({
         ...updates,
@@ -412,6 +415,7 @@ export async function createVehicle(formData: FormData) {
     // 회사 전용 테이블에서 현재 회사의 최대 순번 조회
     try {
       const { data: maxRows } = await supabase
+        .schema("drivermgm")
         .from(tableName)
         .select("vehicle_order")
         .order("vehicle_order", { ascending: false, nullsFirst: false })
@@ -424,7 +428,7 @@ export async function createVehicle(formData: FormData) {
     }
 
     // 회사 전용 테이블에 삽입
-    const { error: insertError } = await supabase.from(tableName).insert({
+    const { error: insertError } = await supabase.schema("drivermgm").from(tableName).insert({
       ...vehicleData,
     })
 
@@ -495,7 +499,7 @@ export async function addMonthlyMileageRecord(formData: FormData) {
 
     // 회사 전용 테이블(vehicle_field_history_${companyCode})에 삽입
     const fieldHistoryTable = getTableName("vehicle_field_history", companyCode)
-    const { error: historyError } = await supabase.from(fieldHistoryTable).insert({
+    const { error: historyError } = await supabase.schema("drivermgm").from(fieldHistoryTable).insert({
       vehicle_id: vehicleId,
       maintenance_date: maintenanceDate,
       field_name: "monthly_mileage",
@@ -515,6 +519,7 @@ export async function addMonthlyMileageRecord(formData: FormData) {
     if (bothValuesProvided && monthlyDistance !== null) {
       const vehiclesTable = getTableName("vehicles", companyCode)
       const { error: updateError } = await supabase
+        .schema("drivermgm")
         .from(vehiclesTable)
         .update({
           previous_month_mileage: monthlyDistance,
@@ -593,6 +598,7 @@ export async function addVehicleFieldUpdate(formData: FormData) {
       // 회사 전용 테이블(vehicles_${companyCode}) 수정
       const vehiclesTable = getTableName("vehicles", companyCode)
       const { error: updateError } = await supabase
+        .schema("drivermgm")
         .from(vehiclesTable)
         .update({
           ...updates,
@@ -608,7 +614,7 @@ export async function addVehicleFieldUpdate(formData: FormData) {
 
     // 회사 전용 테이블(vehicle_field_history_${companyCode})에 삽입
     const fieldHistoryTable = getTableName("vehicle_field_history", companyCode)
-    const { error: historyError } = await supabase.from(fieldHistoryTable).insert({
+    const { error: historyError } = await supabase.schema("drivermgm").from(fieldHistoryTable).insert({
       vehicle_id: vehicleId,
       maintenance_date: maintenanceDate,
       field_name: fieldName,
@@ -657,7 +663,7 @@ export async function deleteVehicle(vehicleNumber: string) {
 
     // 회사 전용 테이블을 대상으로 삭제 (차량번호로 식별)
     const tableName = getTableName("vehicles", companyCode)
-    const { error } = await supabase.from(tableName).delete().eq("vehicle_number", vehicleNumber)
+    const { error } = await supabase.schema("drivermgm").from(tableName).delete().eq("vehicle_number", vehicleNumber)
 
     if (error) {
       console.error("[v0] Error deleting vehicle:", error)
@@ -707,7 +713,7 @@ export async function updateVehicleBasicInfo(vehicleNumber: string, updates: any
 
     // 회사 전용 테이블(vehicles_${companyCode}) 수정
     const tableName = getTableName("vehicles", companyCode)
-    const { error } = await supabase.from(tableName).update(updateData).eq("vehicle_number", vehicleNumber)
+    const { error } = await supabase.schema("drivermgm").from(tableName).update(updateData).eq("vehicle_number", vehicleNumber)
 
     if (error) {
       console.error("[v0] Error updating vehicle basic info:", error)
@@ -764,7 +770,7 @@ export async function addRefuelingRecord(formData: FormData) {
     const fieldHistoryTable = getTableName("vehicle_field_history", companyCode)
 
     // 회사 전용 테이블(refueling_history_${companyCode})에 삽입
-    const { error: refuelError } = await supabase.from(refuelingTable).insert({
+    const { error: refuelError } = await supabase.schema("drivermgm").from(refuelingTable).insert({
       vehicle_id: vehicleId,
       refuel_date: refuelDate,
       mileage,
@@ -780,6 +786,7 @@ export async function addRefuelingRecord(formData: FormData) {
 
     // 회사 전용 테이블(vehicles_${companyCode})에서 현재 총주행거리 조회
     const { data: vehicle } = await supabase
+      .schema("drivermgm")
       .from(vehiclesTable)
       .select("total_mileage")
       .eq("id", vehicleId)
@@ -791,6 +798,7 @@ export async function addRefuelingRecord(formData: FormData) {
 
     // 회사 전용 테이블(vehicles_${companyCode}) 수정
     const { error: updateError } = await supabase
+      .schema("drivermgm")
       .from(vehiclesTable)
       .update({
         total_mileage: mileage,
@@ -807,7 +815,7 @@ export async function addRefuelingRecord(formData: FormData) {
     }
 
     // 회사 전용 테이블(vehicle_field_history_${companyCode})에 주유 이력 삽입
-    const { error: historyError } = await supabase.from(fieldHistoryTable).insert({
+    const { error: historyError } = await supabase.schema("drivermgm").from(fieldHistoryTable).insert({
       vehicle_id: vehicleId,
       maintenance_date: maintenanceDate,
       field_name: "refueling",
@@ -848,6 +856,7 @@ export async function checkVehicleOrderDuplicate(order: number, excludeVehicleNu
     // 회사 전용 테이블(vehicles_${companyCode}) 조회
     const tableName = getTableName("vehicles", companyCode)
     const { data } = await supabase
+      .schema("drivermgm")
       .from(tableName)
       .select("vehicle_number")
       .eq("vehicle_order", Number(order))
@@ -888,6 +897,7 @@ export async function deleteMaintenanceRecord(recordId: string | number, recordT
     // inspection_history 테이블에는 field_name 컬럼이 없으므로 recordType에 따라 select 컬럼을 분기
     const selectColumns = recordType === "inspection" ? "id, vehicle_id" : "id, vehicle_id, field_name"
     const { data: existingRecord, error: selectError } = await supabase
+      .schema("drivermgm")
       .from(historyTable)
       .select(selectColumns)
       .eq("id", recordId)
@@ -906,7 +916,7 @@ export async function deleteMaintenanceRecord(recordId: string | number, recordT
     const fieldName = recordType === "inspection" ? "inspection" : ((existingRecord as any).field_name || recordType)
 
     // 회사 전용 이력 테이블에서 삭제
-    const { error: deleteError } = await supabase.from(historyTable).delete().eq("id", recordId)
+    const { error: deleteError } = await supabase.schema("drivermgm").from(historyTable).delete().eq("id", recordId)
 
     if (deleteError) {
       console.error("[v0] Error deleting record:", deleteError)
@@ -917,6 +927,7 @@ export async function deleteMaintenanceRecord(recordId: string | number, recordT
     if (recordType === "inspection") {
       const inspectionTable = getTableName("inspection_history", companyCode)
       const { data: latestInspection } = await supabase
+        .schema("drivermgm")
         .from(inspectionTable)
         .select("*")
         .eq("vehicle_id", vehicleId)
@@ -926,6 +937,7 @@ export async function deleteMaintenanceRecord(recordId: string | number, recordT
         .maybeSingle()
 
       await supabase
+        .schema("drivermgm")
         .from(vehiclesTable)
         .update({
           last_inspection_date: latestInspection?.inspection_date || null,
@@ -939,6 +951,7 @@ export async function deleteMaintenanceRecord(recordId: string | number, recordT
       // 일반 정비항목: 가장 최신 레코드로 차량 테이블 동기화
       const fieldHistoryTable = getTableName("vehicle_field_history", companyCode)
       const { data: latestRecord } = await supabase
+        .schema("drivermgm")
         .from(fieldHistoryTable)
         .select("*")
         .eq("vehicle_id", vehicleId)
@@ -949,6 +962,7 @@ export async function deleteMaintenanceRecord(recordId: string | number, recordT
         .maybeSingle()
 
       await supabase
+        .schema("drivermgm")
         .from(vehiclesTable)
         .update({
           [`${fieldName}_date`]: latestRecord?.date_value || null,
@@ -1007,7 +1021,7 @@ export async function addInspectionRecord(formData: FormData) {
     const vehiclesTable = getTableName("vehicles", companyCode)
 
     // 회사 전용 테이블(inspection_history_${companyCode})에 삽입
-    const { error: inspectionError } = await supabase.from(inspectionTable).insert({
+    const { error: inspectionError } = await supabase.schema("drivermgm").from(inspectionTable).insert({
       vehicle_id: vehicleId,
       inspection_date: inspectionDate,
       inspection_name: inspectionName,
@@ -1025,6 +1039,7 @@ export async function addInspectionRecord(formData: FormData) {
 
     // 회사 전용 테이블(vehicles_${companyCode}) 수정
     const { error: updateError } = await supabase
+      .schema("drivermgm")
       .from(vehiclesTable)
       .update({
         last_inspection_date: inspectionDate,
