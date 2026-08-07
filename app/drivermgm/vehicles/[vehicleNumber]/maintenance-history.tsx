@@ -131,6 +131,12 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
   const [currentPage, setCurrentPage] = useState(1)
   const RECORDS_PER_PAGE = 15
 
+  // Hydration error 방지: 클라이언트 마운트 후에만 로케일 날짜 변환 실행
+  const [isMounted, setIsMounted] = useState(false)
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   const filteredFields = useMemo(() => {
     if (!searchQuery) return VEHICLE_FIELDS
     return VEHICLE_FIELDS.filter((field) => field.label.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -1197,11 +1203,11 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                   paginatedRecords.map((record) => (
                     <TableRow key={`${record.field_name || 'unknown'}-${record.id}`}>
                       <TableCell className="whitespace-nowrap">
-                        {record.maintenance_date ? new Date(record.maintenance_date).toLocaleDateString("ko-KR") : "-"}
+                        {isMounted && record.maintenance_date ? new Date(record.maintenance_date).toLocaleDateString("ko-KR") : "-"}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">{record.field_label || "-"}</TableCell>
                       <TableCell className="whitespace-nowrap">
-                        {record.date_value ? new Date(record.date_value).toLocaleDateString("ko-KR") : "-"}
+                        {isMounted && record.date_value ? new Date(record.date_value).toLocaleDateString("ko-KR") : "-"}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {record.mileage_value != null ? record.mileage_value.toLocaleString() : "-"}
@@ -1283,7 +1289,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                           : "-"}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                        {record.created_at ? new Date(record.created_at).toLocaleString("ko-KR") : "-"}
+                        {isMounted && record.created_at ? new Date(record.created_at).toLocaleString("ko-KR") : "-"}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-center">
                         <div className="flex gap-2 justify-center">
@@ -1370,7 +1376,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                 </p>
                 <p>
                   <strong>정비실행일:</strong>{" "}
-                  {recordToDelete.date_value ? new Date(recordToDelete.date_value).toLocaleDateString("ko-KR") : "-"}
+                  {isMounted && recordToDelete.date_value ? new Date(recordToDelete.date_value).toLocaleDateString("ko-KR") : (recordToDelete.date_value || "-")}
                 </p>
               </div>
             )}
@@ -1387,7 +1393,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
         </DialogContent>
       </Dialog>
 
-      {/* 수정 모달 */}
+      {/* 수정 ��달 */}
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
