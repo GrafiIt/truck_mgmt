@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Search, Trash2, Edit2, Download, Camera, X } from "lucide-react"
+import { Plus, Search, Trash2, Edit2, Download, Camera, X, Receipt } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Dialog,
@@ -138,6 +138,10 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  // 영수증 이미지 모달 상태
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false)
+  const [receiptModalUrl, setReceiptModalUrl] = useState<string | null>(null)
 
   // 영수증/명세서 첨부 관련 상태 (선택 사항)
   const [receiptBlob, setReceiptBlob] = useState<Blob | null>(null)
@@ -371,7 +375,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
 
           if (uploadError) {
             console.error("[v0] Receipt upload error:", uploadError)
-            alert(`영수증 이미지 업로드 중 오류가 발생했습니다: ${uploadError.message}`)
+            alert(`영��증 이미지 업로드 중 오류가 발생했습니다: ${uploadError.message}`)
             setIsUploadingReceipt(false)
             setIsSaving(false)
             return
@@ -1380,6 +1384,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                   <TableHead className="whitespace-nowrap">월의 첫 주행기록 (km)</TableHead>
                   <TableHead className="whitespace-nowrap">월의 마지막 주행기록 (km)</TableHead>
                   <TableHead className="whitespace-nowrap">입력한 달의 주행거리 (km)</TableHead>
+                  <TableHead className="whitespace-nowrap text-center">영수증</TableHead>
                   <TableHead className="whitespace-nowrap">생성일시</TableHead>
                   <TableHead className="whitespace-nowrap text-center">삭제</TableHead>
                 </TableRow>
@@ -1387,7 +1392,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
               <TableBody>
                 {paginatedRecords.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={21} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={22} className="text-center text-muted-foreground py-8">
                       정비 이력이 없습니다.
                     </TableCell>
                   </TableRow>
@@ -1479,6 +1484,24 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                         {record.field_name === "monthly_mileage" && record.mileage_value
                           ? `${record.mileage_value.toLocaleString()}km`
                           : "-"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-center">
+                        {record.receipt_image_url ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-primary hover:text-primary hover:bg-primary/10"
+                            onClick={() => {
+                              setReceiptModalUrl(record.receipt_image_url!)
+                              setReceiptModalOpen(true)
+                            }}
+                            title="영수증 보기"
+                          >
+                            <Receipt className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                         {isMounted && record.created_at ? new Date(record.created_at).toLocaleString("ko-KR") : "-"}
@@ -1585,7 +1608,38 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
         </DialogContent>
       </Dialog>
 
-      {/* 수정 ��달 */}
+      {/* 영수증 이미지 모달 */}
+      <Dialog open={receiptModalOpen} onOpenChange={(open) => { setReceiptModalOpen(open); if (!open) setReceiptModalUrl(null) }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>영수증 / 명세서</DialogTitle>
+            <DialogDescription>첨부된 영수증 이미지입니다.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-2">
+            {receiptModalUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={receiptModalUrl}
+                alt="영수증 이미지"
+                className="max-h-[60vh] w-auto rounded-md border object-contain"
+              />
+            )}
+          </div>
+          <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
+            <Button
+              variant="outline"
+              onClick={() => receiptModalUrl && window.open(receiptModalUrl, "_blank")}
+            >
+              새 탭에서 열기
+            </Button>
+            <Button variant="outline" onClick={() => setReceiptModalOpen(false)}>
+              닫기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 수정 모달 */}
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
