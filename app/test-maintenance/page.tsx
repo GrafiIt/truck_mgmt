@@ -1,18 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { createClient } from "@supabase/supabase-js"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { createClient } from "@/lib/supabase/client"
 
 interface RawData {
-  vehicle: object | null
-  fieldHistory: object[]
-  inspectionHistory: object[]
-  refuelingHistory: object[]
+  vehicle: unknown
+  fieldHistory: unknown[]
+  inspectionHistory: unknown[]
+  refuelingHistory: unknown[]
 }
 
 export default function TestMaintenancePage() {
@@ -33,40 +28,47 @@ export default function TestMaintenancePage() {
     setData(null)
 
     try {
-      // 1) vehicles_human 에서 id 조회
+      const supabase = createClient()
+
+      // 1) drivermgm.vehicles 에서 차량번호로 id 조회 (회사코드 등 필터 무시)
       const { data: vehicleRow, error: vehicleError } = await supabase
-        .from("vehicles_human")
+        .schema("drivermgm")
+        .from("vehicles")
         .select("*")
         .eq("vehicle_number", trimmed)
         .maybeSingle()
 
       if (vehicleError) {
-        setError(`vehicles_human 조회 오류: ${vehicleError.message}`)
+        setError(`drivermgm.vehicles 조회 오류: ${vehicleError.message}`)
         setIsLoading(false)
         return
       }
 
       if (!vehicleRow) {
-        setError(`차량번호 "${trimmed}"를 vehicles_human 테이블에서 찾을 수 없습니다.`)
+        setError(`차량번호 "${trimmed}"를 drivermgm.vehicles 테이블에서 찾을 수 없습니다.`)
         setIsLoading(false)
         return
       }
 
-      const vehicleId = vehicleRow.id
+      const vehicleId = (vehicleRow as { id: number | string }).id
 
-      // 2) 3개 테이블에서 데이터 병렬 조회 (시간 역순)
+      // 2) vehicle_id 기준으로 3개 테이블/뷰에서 시간 역순 조회
       const [fieldRes, inspectionRes, refuelingRes] = await Promise.all([
+        // public.vehicle_field_history_human
         supabase
           .from("vehicle_field_history_human")
           .select("*")
           .eq("vehicle_id", vehicleId)
           .order("created_at", { ascending: false }),
+        // public.inspection_history_human
         supabase
           .from("inspection_history_human")
           .select("*")
           .eq("vehicle_id", vehicleId)
           .order("created_at", { ascending: false }),
+        // drivermgm.refueling_history
         supabase
+          .schema("drivermgm")
           .from("refueling_history")
           .select("*")
           .eq("vehicle_id", vehicleId)
@@ -74,10 +76,10 @@ export default function TestMaintenancePage() {
       ])
 
       const errors = [
-        fieldRes.error && `vehicle_field_history_human: ${fieldRes.error.message}`,
-        inspectionRes.error && `inspection_history_human: ${inspectionRes.error.message}`,
-        refuelingRes.error && `refueling_history: ${refuelingRes.error.message}`,
-      ].filter(Boolean)
+        fieldRes.error && `public.vehicle_field_history_human: ${fieldRes.error.message}`,
+        inspectionRes.error && `public.inspection_history_human: ${inspectionRes.error.message}`,
+        refuelingRes.error && `drivermgm.refueling_history: ${refuelingRes.error.message}`,
+      ].filter(Boolean) as string[]
 
       if (errors.length > 0) {
         setError(errors.join("\n"))
@@ -96,6 +98,24 @@ export default function TestMaintenancePage() {
     }
   }
 
+  const preStyle: React.CSSProperties = {
+    backgroundColor: "#f8fafc",
+    border: "1px solid #e2e8f0",
+    borderRadius: "4px",
+    padding: "1rem",
+    overflowX: "auto",
+    fontSize: "0.8rem",
+    lineHeight: "1.5",
+    margin: 0,
+  }
+
+  const sectionTitle: React.CSSProperties = {
+    fontSize: "1.1rem",
+    fontWeight: "bold",
+    marginBottom: "0.5rem",
+    color: "#1d4ed8",
+  }
+
   return (
     <main style={{ fontFamily: "monospace", padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
       <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>
@@ -108,7 +128,7 @@ export default function TestMaintenancePage() {
           value={vehicleNumber}
           onChange={(e) => setVehicleNumber(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSearch()
+            if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) handleSearch()
           }}
           placeholder="차량번호 입력 (예: 12가3456)"
           style={{
@@ -136,6 +156,8 @@ export default function TestMaintenancePage() {
         </button>
       </div>
 
+      {isLoading && <p style={{ marginBottom: "1rem", color: "#555" }}>데이터를 불러오는 중입니다...</p>}
+
       {error && (
         <div
           style={{
@@ -155,78 +177,36 @@ export default function TestMaintenancePage() {
       {data && (
         <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
           <section>
-            <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "0.5rem", color: "#1d4ed8" }}>
-              vehicles_human (차량 정보)
-            </h2>
-            <pre
-              style={{
-                backgroundColor: "#f8fafc",
-                border: "1px solid #e2e8f0",
-                borderRadius: "4px",
-                padding: "1rem",
-                overflowX: "auto",
-                fontSize: "0.8rem",
-                lineHeight: "1.5",
-              }}
-            >
-              {JSON.stringify(data.vehicle, null, 2)}
+            <h2 style={sectionTitle}>drivermgm.vehicles (차량 정보)</h2>
+            <pre style={preStyle}>
+              <code>{JSON.stringify(data.vehicle, null, 2)}</code>
             </pre>
           </section>
 
           <section>
-            <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "0.5rem", color: "#1d4ed8" }}>
-              vehicle_field_history_human (일반 정비 이력) — {data.fieldHistory.length}건
+            <h2 style={sectionTitle}>
+              public.vehicle_field_history_human — {data.fieldHistory.length}건
             </h2>
-            <pre
-              style={{
-                backgroundColor: "#f8fafc",
-                border: "1px solid #e2e8f0",
-                borderRadius: "4px",
-                padding: "1rem",
-                overflowX: "auto",
-                fontSize: "0.8rem",
-                lineHeight: "1.5",
-              }}
-            >
-              {JSON.stringify(data.fieldHistory, null, 2)}
+            <pre style={preStyle}>
+              <code>{JSON.stringify(data.fieldHistory, null, 2)}</code>
             </pre>
           </section>
 
           <section>
-            <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "0.5rem", color: "#1d4ed8" }}>
-              inspection_history_human (정기점검 이력) — {data.inspectionHistory.length}건
+            <h2 style={sectionTitle}>
+              public.inspection_history_human — {data.inspectionHistory.length}건
             </h2>
-            <pre
-              style={{
-                backgroundColor: "#f8fafc",
-                border: "1px solid #e2e8f0",
-                borderRadius: "4px",
-                padding: "1rem",
-                overflowX: "auto",
-                fontSize: "0.8rem",
-                lineHeight: "1.5",
-              }}
-            >
-              {JSON.stringify(data.inspectionHistory, null, 2)}
+            <pre style={preStyle}>
+              <code>{JSON.stringify(data.inspectionHistory, null, 2)}</code>
             </pre>
           </section>
 
           <section>
-            <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "0.5rem", color: "#1d4ed8" }}>
-              refueling_history (주유 이력) — {data.refuelingHistory.length}건
+            <h2 style={sectionTitle}>
+              drivermgm.refueling_history — {data.refuelingHistory.length}건
             </h2>
-            <pre
-              style={{
-                backgroundColor: "#f8fafc",
-                border: "1px solid #e2e8f0",
-                borderRadius: "4px",
-                padding: "1rem",
-                overflowX: "auto",
-                fontSize: "0.8rem",
-                lineHeight: "1.5",
-              }}
-            >
-              {JSON.stringify(data.refuelingHistory, null, 2)}
+            <pre style={preStyle}>
+              <code>{JSON.stringify(data.refuelingHistory, null, 2)}</code>
             </pre>
           </section>
         </div>
