@@ -832,6 +832,7 @@ export async function addRefuelingRecord(formData: FormData) {
       date_value: refuelDate,
       mileage_value: mileage,
       text_value: `${fuelAmount}L / ${fuelCost.toLocaleString()}원`,
+      cost: fuelCost,
       repair_shop: repairShop,
       text_value2: maintenanceNotes,
       receipt_image_url: receiptImageUrl,
@@ -849,7 +850,7 @@ export async function addRefuelingRecord(formData: FormData) {
 }
 
 /**
- * [조회] 회사 전용 테이블 vehicles_${companyCode}에서 차량 순번 중복 여부를 확인한다.
+ * [조회] 회사 전�� 테이블 vehicles_${companyCode}에서 차량 순번 중복 여부를 확인한다.
  */
 export async function checkVehicleOrderDuplicate(order: number, excludeVehicleNumber: string) {
   try {
@@ -1176,6 +1177,9 @@ export async function updateMaintenanceRecord(payload: any) {
       const fuelCost = payload.fuel_cost ?? null
       if (fuelAmount !== null || fuelCost !== null) {
         updateData.text_value = `${fuelAmount ?? 0}L / ${(fuelCost ?? 0).toLocaleString()}원`
+      }
+      if (fuelCost !== null) {
+        updateData.cost = fuelCost
       }
     }
 

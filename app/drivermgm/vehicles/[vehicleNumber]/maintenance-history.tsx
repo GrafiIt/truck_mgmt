@@ -2156,6 +2156,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                   updatePayload.fuel_amount = editValues.fuel_amount ? parseFloat(editValues.fuel_amount) : null
                   updatePayload.fuel_cost = editValues.fuel_cost ? parseInt(editValues.fuel_cost, 10) : null
                   updatePayload.mileage_value = editValues.mileage_value ? parseInt(editValues.mileage_value, 10) : null
+                  updatePayload.cost = updatePayload.fuel_cost
                 }
 
                 // 기타 항목: mileage_value + others_summary
