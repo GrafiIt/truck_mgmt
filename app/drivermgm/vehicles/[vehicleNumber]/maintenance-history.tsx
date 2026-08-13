@@ -1666,7 +1666,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>��비 이력 수정</DialogTitle>
+            <DialogTitle>정비 이력 수정</DialogTitle>
             <DialogDescription>{recordToEdit?.field_label} 항목 수정</DialogDescription>
           </DialogHeader>
 
