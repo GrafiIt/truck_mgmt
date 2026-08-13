@@ -906,7 +906,7 @@ export default function MaintenanceHistory({ vehicleId, vehicleNumber, vehicle, 
                           <Textarea
                             id="maintenance_notes_refueling"
                             name="maintenance_notes"
-                            placeholder="��비 관련 기타 사항을 입력하세요..."
+                            placeholder="정비 관련 기타 사항을 입력하세요..."
                             rows={3}
                           />
                         </div>
