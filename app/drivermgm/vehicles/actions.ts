@@ -448,7 +448,7 @@ export async function createVehicle(formData: FormData) {
 
 /**
  * [생성/수정] 회사 전용 테이블 vehicle_field_history_${companyCode}에 전월주행거리를 기록하고,
- * vehicles_${companyCode}의 전�����주행거리를 갱신한다.
+ * vehicles_${companyCode}의 전�������주행거리를 갱신한다.
  */
 export async function addMonthlyMileageRecord(formData: FormData) {
   try {
@@ -501,17 +501,29 @@ export async function addMonthlyMileageRecord(formData: FormData) {
 
     const receiptImageUrl = (formData.get("receipt_image_url") as string) || null
 
+    // 프론트엔드(maintenance-history.tsx)가 목록/수정 화면에서 text_value를
+    // { mileage_month, month_start_mileage, month_end_mileage } JSON으로 파싱하므로
+    // 동일한 형식으로 저장해야 한다. (다른 프로그램의 add-monthly-mileage-record API와도 동일 형식)
+    const monthlyMileageData = JSON.stringify({
+      mileage_month: mileageMonth || null,
+      month_start_mileage: monthStartMileage,
+      month_end_mileage: monthEndMileage,
+    })
+
+    // field_label도 프론트엔드에서 넘어온 값("월간주행거리")을 그대로 사용한다.
+    const fieldLabel = (formData.get("field_label") as string) || "월간주행거리"
+
     // 회사 전용 테이블(vehicle_field_history_${companyCode})에 삽입
     const fieldHistoryTable = getTableName("vehicle_field_history", companyCode)
     const { error: historyError } = await supabase.schema("drivermgm").from(fieldHistoryTable).insert({
       vehicle_id: vehicleId,
       maintenance_date: maintenanceDate,
       field_name: "monthly_mileage",
-      field_label: "전월주행거리",
+      field_label: fieldLabel,
       date_value: dateValue,
       mileage_value: monthlyDistance,
-      text_value: monthStartMileage !== null ? monthStartMileage.toString() : null,
-      text_value2: monthEndMileage !== null ? monthEndMileage.toString() : null,
+      text_value: monthlyMileageData,
+      text_value2: null,
       receipt_image_url: receiptImageUrl,
     })
 
