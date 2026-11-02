@@ -321,7 +321,7 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredVehicles.map((vehicle) => {
+            {filteredVehicles.map((vehicle, index) => {
               const threshold = getThresholdForVehicleType(vehicle.vehicle_type, thresholds)
               const sh = (name: string, date: string | null, mileage: number | null) =>
                 shouldHighlightWithThreshold(name, date, mileage, vehicle.total_mileage, threshold)
@@ -370,7 +370,7 @@ export default function VehicleList({ vehicles, thresholds }: { vehicles: Vehicl
 
               return (
                 <tr key={vehicle.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-center font-medium">{vehicle.vehicle_order ?? "-"}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-center font-medium">{index + 1}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm">{vehicle.transporter}</td>
                   <td
                     className="px-4 py-3 whitespace-nowrap text-sm bg-white dark:bg-gray-900"
