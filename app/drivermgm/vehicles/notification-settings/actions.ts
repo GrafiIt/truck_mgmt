@@ -482,8 +482,6 @@ export async function updateNotificationThreshold(
         return { success: true }
       }
     }
-      }
-    }
 
     const inserted = await writeRow("insert")
     if (!inserted.ok) {
