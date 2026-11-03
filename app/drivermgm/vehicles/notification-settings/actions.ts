@@ -99,17 +99,80 @@ function createDefaultThreshold(vehicleType: string, companyCode: string): Notif
   return defaults
 }
 
-function sanitizeThresholdPayload(thresholds: Record<string, number | string[]>) {
+const WRITABLE_THRESHOLD_FIELDS = new Set<string>(NUMERIC_THRESHOLD_FIELDS)
+
+function buildWritablePayload(thresholds: Record<string, number | string[]>) {
   const payload: Record<string, number | string[]> = {}
+  const ignoredColumns: string[] = []
 
   for (const [key, value] of Object.entries(thresholds)) {
+    if (WRITABLE_THRESHOLD_FIELDS.has(key)) {
+      const numeric = typeof value === "number" ? value : Number(value)
+      payload[key] = Number.isFinite(numeric) ? numeric : 0
+      continue
+    }
+
+    // 컬럼이 있는 회사만 저장되고, 없으면 아래 재시도에서 제거된다.
+    if (key === "disabled_warnings" && Array.isArray(value)) {
+      payload[key] = value
+      continue
+    }
+
     if (key === "id" || key === "company_code" || key === "vehicle_type" || key === "created_at" || key === "updated_at") {
       continue
     }
-    payload[key] = value
+
+    ignoredColumns.push(key)
   }
 
-  return payload
+  return { payload, ignoredColumns }
+}
+
+function extractMissingColumn(message: string) {
+  const patterns = [
+    /Could not find the '([^']+)' column/i,
+    /column "([^"]+)" of relation/i,
+    /column ([a-zA-Z0-9_]+) does not exist/i,
+  ]
+
+  for (const pattern of patterns) {
+    const match = message.match(pattern)
+    if (match?.[1]) return match[1]
+  }
+
+  return null
+}
+
+function formatSaveError(
+  error: { message?: string; code?: string; details?: string; hint?: string },
+  context: {
+    step: string
+    companyCode: string
+    vehicleType: string
+    sentColumns: string[]
+    ignoredColumns: string[]
+    droppedColumns: string[]
+  },
+) {
+  return [
+    "저장에 실패했습니다.",
+    `단계: ${context.step}`,
+    `회사코드: ${context.companyCode}`,
+    `차량종류: ${context.vehicleType}`,
+    `코드: ${error.code || "-"}`,
+    `메시지: ${error.message || "-"}`,
+    error.details ? `상세: ${error.details}` : "",
+    error.hint ? `힌트: ${error.hint}` : "",
+    `전송 컬럼: ${context.sentColumns.join(", ") || "(없음)"}`,
+    context.ignoredColumns.length > 0
+      ? `DB에 없어 제외한 컬럼: ${context.ignoredColumns.join(", ")}`
+      : "",
+    context.droppedColumns.length > 0
+      ? `재시도 중 제거한 컬럼: ${context.droppedColumns.join(", ")}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n")
 }
 
 export async function getVehicleTypes(): Promise<string[]> {
@@ -245,8 +308,57 @@ export async function updateNotificationThreshold(
     }
 
     const supabase = await createAdminClient()
-    const payload = sanitizeThresholdPayload(thresholds)
+    const { payload, ignoredColumns } = buildWritablePayload(thresholds)
+    const droppedColumns: string[] = []
     const now = new Date().toISOString()
+
+    const writeRow = async (mode: "update" | "insert") => {
+      const writable = {
+        ...payload,
+        updated_at: now,
+      } as Record<string, number | string | string[]>
+
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        const query = supabase.schema("drivermgm").from("notification_thresholds")
+        const result =
+          mode === "update"
+            ? await query
+                .update(writable)
+                .eq("company_code", companyCode)
+                .eq("vehicle_type", normalizedType)
+                .select("id")
+            : await query
+                .insert({
+                  ...writable,
+                  company_code: companyCode,
+                  vehicle_type: normalizedType,
+                })
+                .select("id")
+
+        if (!result.error) {
+          return { ok: true as const, count: result.data?.length ?? 0 }
+        }
+
+        const missingColumn = extractMissingColumn(result.error.message || "")
+        if (
+          missingColumn &&
+          missingColumn in writable &&
+          missingColumn !== "company_code" &&
+          missingColumn !== "vehicle_type"
+        ) {
+          delete writable[missingColumn]
+          droppedColumns.push(missingColumn)
+          continue
+        }
+
+        return { ok: false as const, error: result.error }
+      }
+
+      return {
+        ok: false as const,
+        error: { message: "없는 컬럼을 제거한 뒤에도 저장에 실패했습니다.", code: "RETRY_EXCEEDED" },
+      }
+    }
 
     const { data: existing, error: selectError } = await supabase
       .schema("drivermgm")
@@ -257,46 +369,67 @@ export async function updateNotificationThreshold(
 
     if (selectError) {
       console.error("[v0] Failed to check notification threshold:", selectError)
-      return { success: false, error: "업데이트에 실패했습니다." }
+      return {
+        success: false,
+        error: formatSaveError(selectError, {
+          step: "기존 설정 조회",
+          companyCode,
+          vehicleType: normalizedType,
+          sentColumns: Object.keys(payload),
+          ignoredColumns,
+          droppedColumns,
+        }),
+      }
     }
 
     if (existing && existing.length > 0) {
-      const { error: updateError } = await supabase
-        .schema("drivermgm")
-        .from("notification_thresholds")
-        .update({
-          ...payload,
-          updated_at: now,
-        })
-        .eq("company_code", companyCode)
-        .eq("vehicle_type", normalizedType)
-
-      if (updateError) {
-        console.error("[v0] Failed to update notification threshold:", updateError)
-        return { success: false, error: "업데이트에 실패했습니다." }
+      const updated = await writeRow("update")
+      if (!updated.ok) {
+        console.error("[v0] Failed to update notification threshold:", updated.error)
+        return {
+          success: false,
+          error: formatSaveError(updated.error, {
+            step: "기존 설정 수정",
+            companyCode,
+            vehicleType: normalizedType,
+            sentColumns: Object.keys(payload),
+            ignoredColumns,
+            droppedColumns,
+          }),
+        }
       }
 
-      return { success: true }
+      if (updated.count > 0) {
+        return {
+          success: true,
+          warning: droppedColumns.length > 0 ? `DB에 없는 컬럼은 저장하지 않았습니다: ${droppedColumns.join(", ")}` : undefined,
+        }
+      }
     }
 
-    const { error: insertError } = await supabase
-      .schema("drivermgm")
-      .from("notification_thresholds")
-      .insert({
-        ...payload,
-        company_code: companyCode,
-        vehicle_type: normalizedType,
-        updated_at: now,
-      })
-
-    if (insertError) {
-      console.error("[v0] Failed to insert notification threshold:", insertError)
-      return { success: false, error: "업데이트에 실패했습니다." }
+    const inserted = await writeRow("insert")
+    if (!inserted.ok) {
+      console.error("[v0] Failed to insert notification threshold:", inserted.error)
+      return {
+        success: false,
+        error: formatSaveError(inserted.error, {
+          step: "신규 설정 추가",
+          companyCode,
+          vehicleType: normalizedType,
+          sentColumns: Object.keys(payload),
+          ignoredColumns,
+          droppedColumns,
+        }),
+      }
     }
 
-    return { success: true }
+    return {
+      success: true,
+      warning: droppedColumns.length > 0 ? `DB에 없는 컬럼은 저장하지 않았습니다: ${droppedColumns.join(", ")}` : undefined,
+    }
   } catch (error) {
     console.error("[v0] Error in updateNotificationThreshold:", error)
-    return { success: false, error: "업데이트에 실패했습니다." }
+    const message = error instanceof Error ? error.message : String(error)
+    return { success: false, error: `저장에 실패했습니다.\n메시지: ${message}` }
   }
 }
