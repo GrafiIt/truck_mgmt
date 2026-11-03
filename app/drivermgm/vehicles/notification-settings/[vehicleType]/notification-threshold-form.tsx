@@ -114,6 +114,7 @@ export default function NotificationThresholdForm({ vehicleType, threshold }: Pr
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState("설정이 저장되었습니다. 목록으로 돌아갑니다...")
 
   const MAINTENANCE_ITEM_NAMES = [
     "구리스", "엔진오일", "미션오일", "경유필터", "데후오일",
@@ -213,10 +214,15 @@ export default function NotificationThresholdForm({ vehicleType, threshold }: Pr
     const result = await updateNotificationThreshold(vehicleType, updateData)
 
     if (result.success) {
+      setSuccessMessage(
+        result.warning
+          ? `설정이 저장되었습니다. ${result.warning}`
+          : "설정이 저장되었습니다. 목록으로 돌아갑니다...",
+      )
       setSuccess(true)
       setTimeout(() => {
         router.push("/drivermgm/vehicles/notification-settings")
-      }, 1500)
+      }, result.warning ? 4000 : 1500)
     } else {
       setError(result.error || "업데이트에 실패했습니다.")
       window.scrollTo({ top: 0, behavior: "smooth" })
@@ -406,7 +412,7 @@ export default function NotificationThresholdForm({ vehicleType, threshold }: Pr
 
       {success && (
         <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-800 dark:text-green-200">
-          설정이 저장되었습니다. 목록으로 돌아갑니다...
+          {successMessage}
         </div>
       )}
 
