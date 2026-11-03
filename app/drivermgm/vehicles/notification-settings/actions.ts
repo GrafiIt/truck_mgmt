@@ -339,7 +339,35 @@ export async function updateNotificationThreshold(
           return { ok: true as const, count: result.data?.length ?? 0 }
         }
 
-        const missingColumn = extractMissingColumn(result.error.message || "")
+        const errorMessage = result.error.message || ""
+        const sequenceDenied = result.error.code === "42501" && errorMessage.includes("_id_seq")
+        if (mode === "insert" && sequenceDenied && !("id" in writable)) {
+          const { data: maxRows, error: maxError } = await supabase
+            .schema("drivermgm")
+            .from("notification_thresholds")
+            .select("id")
+            .order("id", { ascending: false })
+            .limit(1)
+
+          if (maxError) {
+            return { ok: false as const, error: maxError }
+          }
+
+          writable.id = Number(maxRows?.[0]?.id ?? 0) + 1
+          continue
+        }
+
+        if (
+          mode === "insert" &&
+          result.error.code === "23505" &&
+          errorMessage.includes("notification_thresholds_pkey") &&
+          typeof writable.id === "number"
+        ) {
+          writable.id = writable.id + 1
+          continue
+        }
+
+        const missingColumn = extractMissingColumn(errorMessage)
         if (
           missingColumn &&
           missingColumn in writable &&
