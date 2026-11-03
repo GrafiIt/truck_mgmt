@@ -47,30 +47,68 @@ function getTableName(base: string, companyCode: string): string {
 const NUMERIC_THRESHOLD_FIELDS = [
   "grease_days_red",
   "grease_days_blue",
+  "grease_km_red",
+  "grease_km_blue",
   "engine_oil_days_red",
   "engine_oil_days_blue",
   "engine_oil_km_red",
   "engine_oil_km_blue",
+  "mission_oil_days_red",
+  "mission_oil_days_blue",
   "mission_oil_km_red",
   "mission_oil_km_blue",
+  "diesel_filter_days_red",
+  "diesel_filter_days_blue",
   "diesel_filter_km_red",
   "diesel_filter_km_blue",
   "defu_oil_days_red",
   "defu_oil_days_blue",
+  "defu_oil_km_red",
+  "defu_oil_km_blue",
   "tire_days_red",
   "tire_days_blue",
+  "tire_km_red",
+  "tire_km_blue",
   "dry_filter_days_red",
   "dry_filter_days_blue",
+  "dry_filter_km_red",
+  "dry_filter_km_blue",
   "water_separator_days_red",
   "water_separator_days_blue",
+  "water_separator_km_red",
+  "water_separator_km_blue",
   "lining_days_red",
   "lining_days_blue",
+  "lining_km_red",
+  "lining_km_blue",
   "battery_days_red",
   "battery_days_blue",
+  "battery_km_red",
+  "battery_km_blue",
   "air_tank_days_red",
   "air_tank_days_blue",
+  "air_tank_km_red",
+  "air_tank_km_blue",
   "axle_bearing_days_red",
   "axle_bearing_days_blue",
+  "axle_bearing_km_red",
+  "axle_bearing_km_blue",
+  "power_oil_days_red",
+  "power_oil_days_blue",
+  "power_oil_km_red",
+  "power_oil_km_blue",
+  "air_dryer_days_red",
+  "air_dryer_days_blue",
+  "air_dryer_km_red",
+  "air_dryer_km_blue",
+  "pto_joint_days_red",
+  "pto_joint_days_blue",
+  "pto_joint_km_red",
+  "pto_joint_km_blue",
+  "heater_days_red",
+  "heater_days_blue",
+  "heater_km_red",
+  "heater_km_blue",
   "inspection_days_red",
   "inspection_days_blue",
 ] as const
@@ -141,6 +179,16 @@ function extractMissingColumn(message: string) {
   }
 
   return null
+}
+
+function missingColumnSaveError(droppedColumns: string[]) {
+  return [
+    "저장한 값 중 일부가 데이터베이스에 컬럼이 없어 반영되지 않았습니다.",
+    `저장되지 않은 컬럼: ${droppedColumns.join(", ")}`,
+    "미션오일 일수, 구리스 km, 파워오일, 에어드라이어, PTO조인트, 히터 등이 이 경우에 해당합니다.",
+    "채팅에 안내한 컬럼 추가 SQL을 Supabase에서 실행한 뒤 다시 저장하세요.",
+    "이 테이블은 회사별 테이블이 아니라 company_code로 구분하므로, SQL은 회사마다 반복할 필요가 없습니다.",
+  ].join("\n")
 }
 
 function formatSaveError(
@@ -318,7 +366,7 @@ export async function updateNotificationThreshold(
         updated_at: now,
       } as Record<string, number | string | string[]>
 
-      for (let attempt = 0; attempt < 12; attempt += 1) {
+      for (let attempt = 0; attempt < 80; attempt += 1) {
         const query = supabase.schema("drivermgm").from("notification_thresholds")
         const result =
           mode === "update"
@@ -428,10 +476,10 @@ export async function updateNotificationThreshold(
       }
 
       if (updated.count > 0) {
-        return {
-          success: true,
-          warning: droppedColumns.length > 0 ? `DB에 없는 컬럼은 저장하지 않았습니다: ${droppedColumns.join(", ")}` : undefined,
+        if (droppedColumns.length > 0) {
+          return { success: false, error: missingColumnSaveError(droppedColumns) }
         }
+        return { success: true }
       }
     }
 
@@ -451,10 +499,11 @@ export async function updateNotificationThreshold(
       }
     }
 
-    return {
-      success: true,
-      warning: droppedColumns.length > 0 ? `DB에 없는 컬럼은 저장하지 않았습니다: ${droppedColumns.join(", ")}` : undefined,
+    if (droppedColumns.length > 0) {
+      return { success: false, error: missingColumnSaveError(droppedColumns) }
     }
+
+    return { success: true }
   } catch (error) {
     console.error("[v0] Error in updateNotificationThreshold:", error)
     const message = error instanceof Error ? error.message : String(error)
